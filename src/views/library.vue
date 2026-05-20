@@ -70,6 +70,13 @@
           </div>
           <div
             class="tab"
+            :class="{ active: currentTab === 'webdavSongs' }"
+            @click="updateCurrentTab('webdavSongs')"
+          >
+            WebDAV 歌曲
+          </div>
+          <div
+            class="tab"
             :class="{ active: currentTab === 'albums' }"
             @click="updateCurrentTab('albums')"
           >
@@ -125,6 +132,26 @@
             @click="loadLibrarySongs()"
           >
             {{ librarySongsLoading ? '加载中...' : '加载更多' }}
+          </button>
+        </div>
+      </div>
+
+      <div v-show="currentTab === 'webdavSongs'" class="library-songs-tab">
+        <TrackList :tracks="webdavSongs" :column-number="1" type="tracklist" />
+        <div
+          v-if="webdavSongs.length === 0 && !webdavSongsLoading"
+          class="empty"
+        >
+          暂未索引 WebDAV 歌曲，请先到设置页连接 WebDAV 并索引目录音频。
+        </div>
+        <div class="load-more">
+          <button
+            v-if="webdavSongsHasMore"
+            class="load-more-button"
+            :disabled="webdavSongsLoading"
+            @click="loadWebdavSongs()"
+          >
+            {{ webdavSongsLoading ? '加载中...' : '加载更多' }}
           </button>
         </div>
       </div>
@@ -198,7 +225,7 @@
 import { mapActions, mapMutations, mapState } from 'vuex';
 import { randomNum, dailyTask } from '@/utils/common';
 import { isAccountLoggedIn } from '@/utils/auth';
-import { getLyric, getLibrarySongs } from '@/api/track';
+import { getLyric, getLibrarySongs, getWebdavLibrarySongs } from '@/api/track';
 import NProgress from 'nprogress';
 import locale from '@/locale';
 
@@ -231,6 +258,10 @@ export default {
       librarySongsLoading: false,
       librarySongsHasMore: true,
       librarySongsOffset: 0,
+      webdavSongs: [],
+      webdavSongsLoading: false,
+      webdavSongsHasMore: true,
+      webdavSongsOffset: 0,
     };
   },
   computed: {
@@ -319,6 +350,9 @@ export default {
       if (this.librarySongs.length === 0) {
         this.loadLibrarySongs(true);
       }
+      if (this.webdavSongs.length === 0) {
+        this.loadWebdavSongs(true);
+      }
     },
     loadLibrarySongs(reset = false) {
       if (this.librarySongsLoading) return;
@@ -357,6 +391,42 @@ export default {
           this.librarySongsLoading = false;
         });
     },
+    loadWebdavSongs(reset = false) {
+      if (this.webdavSongsLoading) return;
+
+      const pageSize = 100;
+      const nextOffset = reset ? 0 : this.webdavSongsOffset;
+
+      if (reset) {
+        this.webdavSongs = [];
+        this.webdavSongsHasMore = true;
+        this.webdavSongsOffset = 0;
+      }
+
+      this.webdavSongsLoading = true;
+      return getWebdavLibrarySongs({ offset: nextOffset, limit: pageSize })
+        .then(({ songs = [], hasMore = false }) => {
+          const existingIds = new Set(this.webdavSongs.map(song => song.id));
+          const merged = reset ? [] : [...this.webdavSongs];
+          songs.forEach(song => {
+            if (!existingIds.has(song.id)) {
+              merged.push(song);
+              existingIds.add(song.id);
+            }
+          });
+
+          this.webdavSongs = merged;
+          this.webdavSongsOffset = merged.length;
+          this.webdavSongsHasMore = Boolean(hasMore);
+        })
+        .catch(error => {
+          this.showToast(`读取 WebDAV 歌曲失败：${error.message || error}`);
+          this.webdavSongsHasMore = false;
+        })
+        .finally(() => {
+          this.webdavSongsLoading = false;
+        });
+    },
     playLikedSongs() {
       this.$store.state.player.playPlaylistByID(
         this.liked.playlists[0].id,
@@ -365,13 +435,16 @@ export default {
       );
     },
     updateCurrentTab(tab) {
-      if (!isAccountLoggedIn() && tab !== 'playlists') {
+      if (!isAccountLoggedIn() && !['playlists', 'webdavSongs'].includes(tab)) {
         this.showToast(locale.t('toast.needToLogin'));
         return;
       }
       this.currentTab = tab;
       if (tab === 'librarySongs' && this.librarySongs.length === 0) {
         this.loadLibrarySongs(true);
+      }
+      if (tab === 'webdavSongs' && this.webdavSongs.length === 0) {
+        this.loadWebdavSongs(true);
       }
       this.$parent.$refs.main.scrollTo({ top: 375, behavior: 'smooth' });
     },

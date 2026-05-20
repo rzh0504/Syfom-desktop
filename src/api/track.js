@@ -1,4 +1,4 @@
-import { getActiveProvider } from '@/providers';
+import { getActiveProvider, getProvider } from '@/providers';
 import {
   cacheTrackDetail,
   getTrackDetailFromCache,
@@ -37,23 +37,24 @@ export function getMP3(id) {
  * @param {string} ids - 音乐 id, 例如 ids=405998841,33894312
  */
 export function getTrackDetail(ids) {
+  const idsInArray = String(ids)
+    .split(',')
+    .map(id => id.trim())
+    .filter(Boolean);
+  const provider = idsInArray.every(id => id.startsWith('webdav:'))
+    ? getProvider('webdav')
+    : getActiveProvider();
+
   const fetchLatest = () => {
-    return getActiveProvider()
-      .getSongDetails(ids)
-      .then(data => {
-        data.songs.map(song => {
-          const privileges = data.privileges.find(t => t.id === song.id);
-          cacheTrackDetail(song, privileges);
-        });
-        return data;
+    return provider.getSongDetails(ids).then(data => {
+      data.songs.map(song => {
+        const privileges = data.privileges.find(t => t.id === song.id);
+        cacheTrackDetail(song, privileges);
       });
+      return data;
+    });
   };
   fetchLatest();
-
-  let idsInArray = [String(ids)];
-  if (typeof ids === 'string') {
-    idsInArray = ids.split(',');
-  }
 
   return getTrackDetailFromCache(idsInArray).then(result => {
     return result ?? fetchLatest();
@@ -91,6 +92,11 @@ export function getLyric(id) {
 export function getLibrarySongs(params = {}) {
   const { offset = 0, limit = 100 } = params;
   return getActiveProvider().getLibrarySongs({ offset, limit });
+}
+
+export function getWebdavLibrarySongs(params = {}) {
+  const { offset = 0, limit = 100 } = params;
+  return getProvider('webdav').getLibrarySongs({ offset, limit });
 }
 
 /**
