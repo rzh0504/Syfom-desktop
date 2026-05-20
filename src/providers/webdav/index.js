@@ -1,8 +1,11 @@
 import {
   buildWebdavSourceKey,
+  downloadFile,
+  getRememberedWebdavCredentials,
   listDirectory,
   normalizeWebdavPath,
   normalizeWebdavUrl,
+  rememberWebdavCredentials,
   testConnection,
 } from './client';
 import {
@@ -30,6 +33,7 @@ export const capabilities = {
 
 export async function login(params = {}) {
   const result = await testConnection(params);
+  rememberWebdavCredentials(params);
   return {
     code: 200,
     profile: {
@@ -89,6 +93,10 @@ export function browseDirectory(params) {
     );
 }
 
+export function rememberCredentials(params) {
+  return rememberWebdavCredentials(params);
+}
+
 export function indexDirectoryTracks(params, entries = []) {
   const sourceKey = buildWebdavSourceKey(params);
   const parentPath = normalizeWebdavPath(params?.path || '/');
@@ -104,6 +112,21 @@ export function getSongDetails(ids) {
     songs,
     privileges: songs.map(song => ({ id: song.id, pl: 320000 })),
   }));
+}
+
+export function getAudioSource(track) {
+  const sourceKey = track.sourceKey;
+  const credentials = getRememberedWebdavCredentials(sourceKey);
+  if (!credentials) {
+    return Promise.reject(
+      new Error('WebDAV 凭据只保存在当前会话，请先在设置页重新连接')
+    );
+  }
+
+  return downloadFile({
+    ...credentials,
+    path: track.path,
+  });
 }
 
 export function getLyrics() {

@@ -13,6 +13,7 @@ export function mapEntryToTrack(entry = {}, source = {}) {
     id: uid,
     uid,
     source: 'webdav',
+    sourceKey,
     sourceId: entry.path,
     sourceType: 'webdav',
     path: entry.path,

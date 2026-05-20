@@ -2,6 +2,7 @@ import { getAlbum } from '@/api/album';
 import { getArtist } from '@/api/artist';
 import { getPlaylistDetail, intelligencePlaylist } from '@/api/playlist';
 import { getLyric, getMP3, getTrackDetail, scrobble } from '@/api/track';
+import { getProvider } from '@/providers';
 import store from '@/store';
 import { isAccountLoggedIn } from '@/utils/auth';
 import { cacheTrackSource, getTrackSource } from '@/utils/db';
@@ -362,6 +363,12 @@ export default class {
     });
   }
   _getAudioSourceFromServer(track) {
+    if (track.source === 'webdav') {
+      return getProvider('webdav')
+        .getAudioSource(track)
+        .then(data => this._getAudioSourceBlobURL(data));
+    }
+
     if (isAccountLoggedIn()) {
       return getMP3(track.id).then(result => {
         if (!result.data[0]) return null;

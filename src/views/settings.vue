@@ -1193,6 +1193,9 @@ export default {
               username: this.webdavForm.username.trim(),
               connectedAt: Date.now(),
             });
+            webdavProvider.rememberCredentials(
+              this.getWebdavRequestParams(this.webdavCurrentPath)
+            );
             this.showToast('WebDAV 连接成功');
           }
         })

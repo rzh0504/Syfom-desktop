@@ -3,6 +3,8 @@ import { withAudioMetadata } from './audio';
 
 const DEFAULT_TIMEOUT = 15000;
 
+const sessionCredentials = new Map();
+
 export function normalizeWebdavUrl(serverUrl) {
   const input = (serverUrl || '').trim();
   if (!input) return '';
@@ -26,6 +28,20 @@ export function joinWebdavUrl(serverUrl, path = '/') {
 
 export function buildWebdavSourceKey({ serverUrl, username } = {}) {
   return `webdav:${normalizeWebdavUrl(serverUrl)}:${username || ''}`;
+}
+
+export function rememberWebdavCredentials(params = {}) {
+  const sourceKey = buildWebdavSourceKey(params);
+  sessionCredentials.set(sourceKey, {
+    serverUrl: normalizeWebdavUrl(params.serverUrl),
+    username: params.username || '',
+    password: params.password || '',
+  });
+  return sourceKey;
+}
+
+export function getRememberedWebdavCredentials(sourceKey) {
+  return sessionCredentials.get(sourceKey) || null;
 }
 
 function buildAuthHeader({ username, password } = {}) {
@@ -191,6 +207,24 @@ export async function listDirectory({
     if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
+}
+
+export async function downloadFile({
+  serverUrl,
+  username,
+  password,
+  path,
+  responseType = 'arraybuffer',
+}) {
+  const response = await requestWebdav({
+    method: 'GET',
+    serverUrl,
+    path,
+    responseType,
+    ...createWebdavConfig({ username, password }),
+  });
+
+  return response.data;
 }
 
 export async function testConnection({ serverUrl, username, password, path }) {
