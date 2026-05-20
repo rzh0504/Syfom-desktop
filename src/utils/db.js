@@ -20,6 +20,16 @@ db.version(5).stores({
     '&id, sourceKey, parentPath, [sourceKey+parentPath], path, isDirectory, updatedAt',
 });
 
+db.version(6).stores({
+  trackSources: '&id, createTime',
+  trackDetail: '&id, updateTime',
+  lyric: '&id, updateTime',
+  album: '&id, updateTime',
+  webdavEntries:
+    '&id, sourceKey, parentPath, [sourceKey+parentPath], path, isDirectory, updatedAt',
+  webdavTracks: '&id, sourceKey, path, parentPath, updatedAt',
+});
+
 db.version(3)
   .stores({
     trackSources: '&id, createTime',
@@ -262,6 +272,35 @@ export function getCachedWebdavDirectoryEntries(sourceKey, parentPath) {
         return a.name.localeCompare(b.name);
       })
     );
+}
+
+export function cacheWebdavTracks(sourceKey, parentPath, tracks = []) {
+  if (!sourceKey || !parentPath) return Promise.resolve([]);
+  const normalizedParentPath = normalizePath(parentPath);
+  const updatedAt = Date.now();
+  const records = tracks.map(track => ({
+    ...track,
+    id: track.uid || track.id,
+    sourceKey,
+    parentPath: normalizedParentPath,
+    updatedAt,
+  }));
+
+  return db.transaction('rw', db.webdavTracks, async () => {
+    await db.webdavTracks.bulkPut(records);
+    return records;
+  });
+}
+
+export function getWebdavTracks({ sourceKey, offset = 0, limit = 100 } = {}) {
+  const query = sourceKey
+    ? db.webdavTracks.where('sourceKey').equals(sourceKey)
+    : db.webdavTracks.toCollection();
+
+  return query
+    .offset(Math.max(0, Number(offset) || 0))
+    .limit(Math.max(1, Number(limit) || 100))
+    .toArray();
 }
 
 function normalizePath(path) {

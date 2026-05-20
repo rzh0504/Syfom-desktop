@@ -7,8 +7,11 @@ import {
 } from './client';
 import {
   cacheWebdavDirectoryEntries,
+  cacheWebdavTracks,
   getCachedWebdavDirectoryEntries,
+  getWebdavTracks,
 } from '@/utils/db';
+import { mapEntryToTrack } from './mappers';
 
 export const key = 'webdav';
 
@@ -61,8 +64,11 @@ function notImplemented(feature) {
   return Promise.reject(new Error(`WebDAV ${feature} is not implemented yet`));
 }
 
-export function getLibrarySongs() {
-  return Promise.resolve({ songs: [], hasMore: false });
+export function getLibrarySongs({ offset = 0, limit = 100, sourceKey } = {}) {
+  return getWebdavTracks({ sourceKey, offset, limit }).then(songs => ({
+    songs,
+    hasMore: songs.length >= limit,
+  }));
 }
 
 export function browseDirectory(params) {
@@ -79,6 +85,16 @@ export function browseDirectory(params) {
         throw error;
       })
     );
+}
+
+export function indexDirectoryTracks(params, entries = []) {
+  const sourceKey = buildWebdavSourceKey(params);
+  const parentPath = normalizeWebdavPath(params?.path || '/');
+  const tracks = entries
+    .filter(entry => entry.isAudio)
+    .map(entry => mapEntryToTrack(entry, params));
+
+  return cacheWebdavTracks(sourceKey, parentPath, tracks).then(() => tracks);
 }
 
 export function getSongDetails() {

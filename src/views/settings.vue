@@ -1583,6 +1583,11 @@ input[type='number'] {
   opacity: 0.78;
 }
 
+.webdav-browser-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .webdav-entry-list {
   display: grid;
   gap: 6px;
