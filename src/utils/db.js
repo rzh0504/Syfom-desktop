@@ -303,6 +303,53 @@ export function getWebdavTracks({ sourceKey, offset = 0, limit = 100 } = {}) {
     .toArray();
 }
 
+export function getWebdavTracksByIds(ids = []) {
+  const idList = String(ids)
+    .split(',')
+    .map(id => id.trim())
+    .filter(Boolean);
+
+  return db.webdavTracks.bulkGet(idList).then(tracks =>
+    tracks.filter(Boolean).map(track => ({
+      ...track,
+      privilege: track.privilege || {
+        id: track.id,
+        pl: 320000,
+        fee: 0,
+        st: 0,
+        cs: false,
+      },
+    }))
+  );
+}
+
+export function searchWebdavTracks({
+  keywords = '',
+  offset = 0,
+  limit = 30,
+} = {}) {
+  const normalizedKeywords = String(keywords).trim().toLowerCase();
+  if (!normalizedKeywords) return Promise.resolve([]);
+
+  return db.webdavTracks
+    .filter(track => {
+      const haystack = [
+        track.name,
+        track.path,
+        track.extension,
+        track.ar?.map(artist => artist.name).join(' '),
+        track.al?.name,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(normalizedKeywords);
+    })
+    .offset(Math.max(0, Number(offset) || 0))
+    .limit(Math.max(1, Number(limit) || 30))
+    .toArray();
+}
+
 function normalizePath(path) {
   const input = String(path || '/').trim();
   if (!input || input === '/') return '/';

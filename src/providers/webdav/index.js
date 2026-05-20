@@ -9,7 +9,9 @@ import {
   cacheWebdavDirectoryEntries,
   cacheWebdavTracks,
   getCachedWebdavDirectoryEntries,
+  getWebdavTracksByIds,
   getWebdavTracks,
+  searchWebdavTracks,
 } from '@/utils/db';
 import { mapEntryToTrack } from './mappers';
 
@@ -97,8 +99,11 @@ export function indexDirectoryTracks(params, entries = []) {
   return cacheWebdavTracks(sourceKey, parentPath, tracks).then(() => tracks);
 }
 
-export function getSongDetails() {
-  return notImplemented('song details');
+export function getSongDetails(ids) {
+  return getWebdavTracksByIds(ids).then(songs => ({
+    songs,
+    privileges: songs.map(song => ({ id: song.id, pl: 320000 })),
+  }));
 }
 
 export function getLyrics() {
@@ -109,8 +114,25 @@ export function getLyrics() {
   });
 }
 
-export function searchAll() {
-  return Promise.resolve({ result: {} });
+export function searchAll({ keywords, type, limit = 30, offset = 0 } = {}) {
+  if (type && ![1, 1018].includes(Number(type))) {
+    return Promise.resolve({ result: { songs: [], hasMore: false } });
+  }
+
+  return searchWebdavTracks({ keywords, limit, offset }).then(songs => ({
+    result: {
+      songs,
+      artists: [],
+      albums: [],
+      playlists: [],
+      mvs: [],
+      hasMore: songs.length >= limit,
+      songCount: songs.length,
+      artistCount: 0,
+      albumCount: 0,
+      mvCount: 0,
+    },
+  }));
 }
 
 export function getPlaylistList() {
