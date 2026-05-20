@@ -23,7 +23,10 @@ function writeData(data) {
 }
 
 function readActiveProviderKey() {
-  const key = readData().activeProvider || DEFAULT_PROVIDER_KEY;
+  const data = readData();
+  const key = data.activeProvider || DEFAULT_PROVIDER_KEY;
+  const source = data.sources?.[key];
+  if (source && source.enabled === false) return DEFAULT_PROVIDER_KEY;
   return providers[key] ? key : DEFAULT_PROVIDER_KEY;
 }
 

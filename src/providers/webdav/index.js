@@ -1,10 +1,12 @@
 import {
   buildWebdavSourceKey,
   downloadFile,
-  getRememberedWebdavCredentials,
+  getStoredWebdavCredentials,
+  forgetWebdavCredentials,
   listDirectory,
   normalizeWebdavPath,
   normalizeWebdavUrl,
+  readWebdavAudioMetadata,
   rememberWebdavCredentials,
   testConnection,
 } from './client';
@@ -12,6 +14,10 @@ import {
   cacheWebdavDirectoryEntries,
   cacheWebdavTracks,
   getCachedWebdavDirectoryEntries,
+  getWebdavAlbumsByArtistId,
+  getWebdavArtists,
+  getWebdavTracksByAlbumId,
+  getWebdavTracksByArtistId,
   getWebdavTracksByIds,
   getWebdavTracks,
   searchWebdavTracks,
@@ -70,6 +76,67 @@ function notImplemented(feature) {
   return Promise.reject(new Error(`WebDAV ${feature} is not implemented yet`));
 }
 
+function emptyAlbum(id) {
+  return {
+    id,
+    uid: id,
+    source: 'webdav',
+    sourceId: id,
+    sourceType: 'webdav',
+    name: 'Unknown Album',
+    picUrl: '/img/logos/yesplaymusic.png',
+    artist: { id: '', name: 'Unknown Artist' },
+    artists: [{ id: '', name: 'Unknown Artist' }],
+    publishTime: 0,
+    size: 0,
+    type: '专辑',
+    company: '',
+    description: '',
+    mark: 0,
+  };
+}
+
+function albumFromTracks(id, tracks = []) {
+  if (tracks.length === 0) return emptyAlbum(id);
+  const first = tracks[0];
+  const album = first.al || first.album || {};
+  return {
+    ...emptyAlbum(id),
+    id: album.id || id,
+    uid: album.id || id,
+    sourceId: album.id || id,
+    name: album.name || 'Unknown Album',
+    picUrl: album.picUrl || '/img/logos/yesplaymusic.png',
+    artist: first.ar?.[0] || { id: '', name: 'Unknown Artist' },
+    artists: first.ar || [],
+    publishTime: first.lastModified || 0,
+    size: tracks.length,
+    description: first.folderPath || '',
+  };
+}
+
+function artistFromTracks(id, tracks = []) {
+  const firstArtist = tracks[0]?.ar?.find(artist => artist.id === id) || {
+    id,
+    name: 'Unknown Artist',
+  };
+  const albumIds = new Set(tracks.map(track => track.al?.id).filter(Boolean));
+  return {
+    id,
+    uid: id,
+    source: 'webdav',
+    sourceId: id,
+    sourceType: 'webdav',
+    name: firstArtist.name,
+    img1v1Url: tracks[0]?.al?.picUrl || '/img/default-user.jpg',
+    briefDesc: '',
+    musicSize: tracks.length,
+    albumSize: albumIds.size,
+    mvSize: 0,
+    followed: false,
+  };
+}
+
 export function getLibrarySongs({ offset = 0, limit = 100, sourceKey } = {}) {
   return getWebdavTracks({ sourceKey, offset, limit }).then(songs => ({
     songs,
@@ -97,14 +164,26 @@ export function rememberCredentials(params) {
   return rememberWebdavCredentials(params);
 }
 
-export function indexDirectoryTracks(params, entries = []) {
+export function forgetCredentials(sourceKey) {
+  return forgetWebdavCredentials(sourceKey);
+}
+
+export async function indexDirectoryTracks(params, entries = []) {
   const sourceKey = buildWebdavSourceKey(params);
   const parentPath = normalizeWebdavPath(params?.path || '/');
-  const tracks = entries
-    .filter(entry => entry.isAudio)
-    .map(entry => mapEntryToTrack(entry, params));
+  const tracks = [];
 
-  return cacheWebdavTracks(sourceKey, parentPath, tracks).then(() => tracks);
+  for (const entry of entries.filter(item => item.isAudio)) {
+    const metadata = await readWebdavAudioMetadata({
+      sourceKey,
+      path: entry.path,
+      contentType: entry.contentType,
+    });
+    tracks.push(mapEntryToTrack(entry, params, entries, metadata));
+  }
+
+  await cacheWebdavTracks(sourceKey, parentPath, tracks);
+  return tracks;
 }
 
 export async function scanDirectory(params, { onProgress } = {}) {
@@ -164,14 +243,14 @@ export function getSongDetails(ids) {
   }));
 }
 
-export function getAudioSource(track) {
+export async function getAudioSource(track) {
   const sourceKey = track.sourceKey;
-  const credentials = getRememberedWebdavCredentials(sourceKey);
+  const credentials = await getStoredWebdavCredentials(sourceKey);
   if (!credentials) {
-    return Promise.reject(
-      new Error('WebDAV 凭据只保存在当前会话，请先在设置页重新连接')
-    );
+    throw new Error('WebDAV 凭据不可用，请先在设置页重新连接');
   }
+
+  if (track.streamUrl) return track.streamUrl;
 
   return downloadFile({
     ...credentials,
@@ -179,7 +258,39 @@ export function getAudioSource(track) {
   });
 }
 
-export function getLyrics() {
+export async function getLyrics(id) {
+  const [track] = await getWebdavTracksByIds([id]);
+  if (!track?.lyricsPath) {
+    return {
+      lrc: { lyric: '' },
+      tlyric: { lyric: '' },
+      romalrc: { lyric: '' },
+    };
+  }
+
+  const credentials = await getStoredWebdavCredentials(track.sourceKey);
+  if (!credentials) {
+    return {
+      lrc: { lyric: '' },
+      tlyric: { lyric: '' },
+      romalrc: { lyric: '' },
+    };
+  }
+
+  const lyric = await downloadFile({
+    ...credentials,
+    path: track.lyricsPath,
+    responseType: 'text',
+  });
+
+  return {
+    lrc: { lyric: lyric || '' },
+    tlyric: { lyric: '' },
+    romalrc: { lyric: '' },
+  };
+}
+
+export function getEmptyLyrics() {
   return Promise.resolve({
     lrc: { lyric: '' },
     tlyric: { lyric: '' },
@@ -228,16 +339,24 @@ export function updatePlaylistTracks() {
   return notImplemented('playlist updates');
 }
 
-export function getAlbumDetail() {
-  return notImplemented('album detail');
+export function getAlbumDetail(id) {
+  return getWebdavTracksByAlbumId(id).then(tracks => ({
+    album: albumFromTracks(id, tracks),
+    songs: tracks.sort((a, b) => (a.no || 0) - (b.no || 0)),
+  }));
 }
 
-export function getArtistDetail() {
-  return notImplemented('artist detail');
+export function getArtistDetail(id) {
+  return getWebdavTracksByArtistId(id).then(tracks => ({
+    artist: artistFromTracks(id, tracks),
+    hotSongs: tracks.slice(0, 24),
+  }));
 }
 
-export function getArtistAlbums() {
-  return Promise.resolve({ hotAlbums: [] });
+export function getArtistAlbums(id, limit = 200) {
+  return getWebdavAlbumsByArtistId(id).then(albums => ({
+    hotAlbums: albums.slice(0, limit),
+  }));
 }
 
 export function getRandomSongs() {
@@ -249,7 +368,7 @@ export function getAlbumListByType() {
 }
 
 export function getAllArtists() {
-  return Promise.resolve([]);
+  return getWebdavArtists();
 }
 
 export function getStarred() {

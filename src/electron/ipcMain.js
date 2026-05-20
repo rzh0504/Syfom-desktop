@@ -4,6 +4,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import shortcuts from '@/utils/shortcuts';
 import { createMenu } from './menu';
 import { isCreateTray, isMac } from '@/utils/platform';
+import axios from 'axios';
 
 const clc = require('cli-color');
 const log = text => {
@@ -12,6 +13,120 @@ const log = text => {
 
 let discordClient = null;
 let isDiscordPresenceDisabled = false;
+
+function getSafeStorage() {
+  try {
+    return require('electron').safeStorage || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function encodeCredentials(credentials) {
+  const safeStorage = getSafeStorage();
+  if (
+    safeStorage &&
+    typeof safeStorage.isEncryptionAvailable === 'function' &&
+    safeStorage.isEncryptionAvailable()
+  ) {
+    return {
+      encrypted: true,
+      value: safeStorage
+        .encryptString(JSON.stringify(credentials))
+        .toString('base64'),
+    };
+  }
+
+  return {
+    encrypted: false,
+    value: credentials,
+  };
+}
+
+function decodeCredentials(record) {
+  if (!record) return null;
+  if (!record.encrypted) return record.value || record;
+
+  const safeStorage = getSafeStorage();
+  if (
+    !safeStorage ||
+    typeof safeStorage.isEncryptionAvailable !== 'function' ||
+    !safeStorage.isEncryptionAvailable()
+  ) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(
+      safeStorage.decryptString(Buffer.from(record.value, 'base64'))
+    );
+  } catch (error) {
+    return null;
+  }
+}
+
+function joinRemoteUrl(serverUrl, path = '/') {
+  const normalizedServerUrl = String(serverUrl || '').replace(/\/+$/, '');
+  const normalizedPath = `/${String(path || '/')}`.replace(/\/+/g, '/');
+  return `${normalizedServerUrl}${
+    normalizedPath === '/' ? '' : normalizedPath
+  }`;
+}
+
+function buildAuthHeader(credentials = {}) {
+  if (!credentials.username && !credentials.password) return {};
+  return {
+    Authorization: `Basic ${Buffer.from(
+      `${credentials.username || ''}:${credentials.password || ''}`
+    ).toString('base64')}`,
+  };
+}
+
+async function parseWebdavAudioMetadata(
+  store,
+  { sourceKey, path, contentType }
+) {
+  const allCredentials = store.get('webdavCredentials') || {};
+  const credentials = decodeCredentials(allCredentials[sourceKey]);
+  if (!credentials || !credentials.serverUrl || !path) return null;
+
+  const response = await axios({
+    url: joinRemoteUrl(credentials.serverUrl, path),
+    method: 'get',
+    responseType: 'arraybuffer',
+    headers: buildAuthHeader(credentials),
+    timeout: 30000,
+  });
+  const metadata = await require('music-metadata').parseBuffer(
+    Buffer.from(response.data),
+    contentType || undefined,
+    { duration: true }
+  );
+  const cover = require('music-metadata').selectCover(metadata.common.picture);
+
+  return {
+    title: metadata.common.title || '',
+    album: metadata.common.album || '',
+    artists: metadata.common.artists || [],
+    artist: metadata.common.artist || '',
+    albumartist: metadata.common.albumartist || '',
+    genre: metadata.common.genre || [],
+    year: metadata.common.year || 0,
+    track: (metadata.common.track && metadata.common.track.no) || 0,
+    disk: (metadata.common.disk && metadata.common.disk.no) || 0,
+    duration: metadata.format.duration || 0,
+    bitrate: metadata.format.bitrate || 0,
+    codec: metadata.format.codec || '',
+    cover: cover
+      ? {
+          format: cover.format || 'image/jpeg',
+          dataUrl: `data:${cover.format || 'image/jpeg'};base64,${Buffer.from(
+            cover.data
+          ).toString('base64')}`,
+        }
+      : null,
+  };
+}
 
 const getDiscordClient = () => {
   if (isDiscordPresenceDisabled) return null;
@@ -23,14 +138,14 @@ const getDiscordClient = () => {
 
     if (discordClient && typeof discordClient.on === 'function') {
       discordClient.on('error', err => {
-        log(`discord rpc error: ${err?.message || err}`);
+        log(`discord rpc error: ${(err && err.message) || err}`);
       });
     }
 
     return discordClient;
   } catch (err) {
     isDiscordPresenceDisabled = true;
-    log(`discord rpc init failed: ${err?.message || err}`);
+    log(`discord rpc init failed: ${(err && err.message) || err}`);
     return null;
   }
 };
@@ -43,11 +158,11 @@ const updateDiscordPresence = payload => {
     const result = client.updatePresence(payload);
     if (result && typeof result.catch === 'function') {
       result.catch(err => {
-        log(`discord rpc update failed: ${err?.message || err}`);
+        log(`discord rpc update failed: ${(err && err.message) || err}`);
       });
     }
   } catch (err) {
-    log(`discord rpc update failed: ${err?.message || err}`);
+    log(`discord rpc update failed: ${(err && err.message) || err}`);
   }
 };
 
@@ -112,6 +227,38 @@ const exitAskWithoutMac = (e, win) => {
 };
 
 export function initIpcMain(win, store, trayEventEmitter) {
+  ipcMain.handle(
+    'webdavCredentials:set',
+    (event, { sourceKey, credentials }) => {
+      if (!sourceKey || !credentials || !credentials.serverUrl) return false;
+      const allCredentials = store.get('webdavCredentials') || {};
+      store.set('webdavCredentials', {
+        ...allCredentials,
+        [sourceKey]: encodeCredentials(credentials),
+      });
+      return true;
+    }
+  );
+
+  ipcMain.handle('webdavCredentials:get', (event, sourceKey) => {
+    const allCredentials = store.get('webdavCredentials') || {};
+    return decodeCredentials(allCredentials[sourceKey]);
+  });
+
+  ipcMain.handle('webdavCredentials:delete', (event, sourceKey) => {
+    if (!sourceKey) return false;
+    const allCredentials = { ...(store.get('webdavCredentials') || {}) };
+    delete allCredentials[sourceKey];
+    store.set('webdavCredentials', allCredentials);
+    return true;
+  });
+
+  ipcMain.handle('webdavMetadata:read', (event, params) => {
+    return parseWebdavAudioMetadata(store, params).catch(error => ({
+      error: error.message || String(error),
+    }));
+  });
+
   ipcMain.on('close', e => {
     if (isMac) {
       win.hide();

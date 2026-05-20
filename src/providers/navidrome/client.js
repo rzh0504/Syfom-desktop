@@ -171,7 +171,23 @@ export function buildAvatarUrl() {
   return '/img/logos/yesplaymusic.png';
 }
 
+function getConfiguredMaxBitRate() {
+  try {
+    const settings = JSON.parse(localStorage.getItem('settings')) || {};
+    const quality = settings.musicQuality;
+    if (quality === 'flac' || quality === '999000') return undefined;
+    const bitRate = Number(quality || 320000);
+    if (!Number.isFinite(bitRate) || bitRate <= 0) return undefined;
+    return Math.round(bitRate / 1000);
+  } catch (error) {
+    return undefined;
+  }
+}
+
 export function buildStreamUrl(songId) {
   if (!songId) return '';
-  return buildAuthenticatedUrl('stream', { id: songId });
+  return buildAuthenticatedUrl('stream', {
+    id: songId,
+    maxBitRate: getConfiguredMaxBitRate(),
+  });
 }

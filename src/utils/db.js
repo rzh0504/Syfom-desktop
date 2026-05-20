@@ -86,6 +86,9 @@ export function cacheTrackSource(trackInfo, url, bitRate, from = 'navidrome') {
     (trackInfo.artists && trackInfo.artists[0]?.name) ||
     'Unknown';
   let cover = trackInfo.al?.picUrl || '';
+  if (cover.startsWith('http://127.0.0.1:') || cover.startsWith('data:')) {
+    cover = '';
+  }
   if (cover && cover.slice(0, 5) !== 'https') {
     cover = 'https' + cover.slice(4);
   }
@@ -321,6 +324,86 @@ export function getWebdavTracksByIds(ids = []) {
       },
     }))
   );
+}
+
+export function getWebdavTracksByAlbumId(albumId) {
+  return db.webdavTracks
+    .where('sourceKey')
+    .startsWith('webdav:')
+    .filter(track => track.al?.id === albumId || track.album?.id === albumId)
+    .toArray();
+}
+
+export function getWebdavTracksByArtistId(artistId) {
+  return db.webdavTracks
+    .where('sourceKey')
+    .startsWith('webdav:')
+    .filter(track =>
+      (track.ar || track.artists || []).some(artist => artist.id === artistId)
+    )
+    .toArray();
+}
+
+export function getWebdavAlbumsByArtistId(artistId) {
+  return getWebdavTracksByArtistId(artistId).then(tracks => {
+    const albums = new Map();
+    tracks.forEach(track => {
+      const album = track.al || track.album;
+      if (!album?.id || albums.has(album.id)) return;
+      albums.set(album.id, {
+        id: album.id,
+        uid: album.id,
+        source: 'webdav',
+        sourceId: album.id,
+        sourceType: 'webdav',
+        name: album.name || 'Unknown Album',
+        picUrl: album.picUrl || '/img/logos/yesplaymusic.png',
+        artist: track.ar?.[0] || { id: artistId, name: 'Unknown Artist' },
+        artists: track.ar || [],
+        publishTime: track.lastModified || 0,
+        size: tracks.filter(item => item.al?.id === album.id).length,
+        type: '专辑',
+        company: '',
+        description: track.folderPath || '',
+        mark: 0,
+      });
+    });
+    return Array.from(albums.values());
+  });
+}
+
+export function getWebdavArtists() {
+  return db.webdavTracks.toArray().then(tracks => {
+    const artists = new Map();
+    tracks.forEach(track => {
+      (track.ar || track.artists || []).forEach(artist => {
+        if (!artist?.id) return;
+        const current = artists.get(artist.id) || {
+          id: artist.id,
+          uid: artist.id,
+          source: 'webdav',
+          sourceId: artist.id,
+          sourceType: 'webdav',
+          name: artist.name || 'Unknown Artist',
+          img1v1Url: track.al?.picUrl || '/img/default-user.jpg',
+          briefDesc: '',
+          musicSize: 0,
+          albumIds: new Set(),
+          mvSize: 0,
+          followed: false,
+        };
+        current.musicSize += 1;
+        if (track.al?.id) current.albumIds.add(track.al.id);
+        artists.set(artist.id, current);
+      });
+    });
+
+    return Array.from(artists.values()).map(artist => ({
+      ...artist,
+      albumSize: artist.albumIds.size,
+      albumIds: undefined,
+    }));
+  });
 }
 
 export function searchWebdavTracks({

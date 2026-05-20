@@ -62,10 +62,13 @@ Vue.filter('formatAlbumType', (type, album) => {
 
 Vue.filter('resizeImage', (imgUrl, size = 512) => {
   if (!imgUrl) return '';
+  if (imgUrl.startsWith('data:')) return imgUrl;
+  if (imgUrl.startsWith('http://127.0.0.1:')) return imgUrl;
   if (imgUrl.includes('/rest/getCoverArt.view')) {
     const separator = imgUrl.includes('?') ? '&' : '?';
     return `${imgUrl}${separator}size=${size}`;
   }
+  if (!/^https?:\/\//i.test(imgUrl)) return imgUrl;
   let httpsImgUrl = imgUrl;
   if (imgUrl.slice(0, 5) !== 'https') {
     httpsImgUrl = 'https' + imgUrl.slice(4);

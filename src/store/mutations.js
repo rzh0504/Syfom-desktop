@@ -39,6 +39,14 @@ export default {
       },
     };
   },
+  removeSource(state, key) {
+    const sources = { ...(state.data.sources || {}) };
+    delete sources[key];
+    state.data.sources = sources;
+    if (state.data.activeProvider === key) {
+      state.data.activeProvider = 'navidrome';
+    }
+  },
   togglePlaylistCategory(state, name) {
     const index = state.settings.enabledPlaylistCategories.findIndex(
       c => c === name

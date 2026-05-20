@@ -2,8 +2,24 @@ import axios from 'axios';
 import { withAudioMetadata } from './audio';
 
 const DEFAULT_TIMEOUT = 15000;
+const INTERNAL_SERVER_PORT = 27329;
 
 const sessionCredentials = new Map();
+
+function getIpcRenderer() {
+  try {
+    if (
+      process.env.IS_ELECTRON !== true ||
+      typeof window === 'undefined' ||
+      !window.require
+    ) {
+      return null;
+    }
+    return window.require('electron')?.ipcRenderer || null;
+  } catch (error) {
+    return null;
+  }
+}
 
 export function normalizeWebdavUrl(serverUrl) {
   const input = (serverUrl || '').trim();
@@ -32,16 +48,69 @@ export function buildWebdavSourceKey({ serverUrl, username } = {}) {
 
 export function rememberWebdavCredentials(params = {}) {
   const sourceKey = buildWebdavSourceKey(params);
-  sessionCredentials.set(sourceKey, {
+  const credentials = {
     serverUrl: normalizeWebdavUrl(params.serverUrl),
     username: params.username || '',
     password: params.password || '',
+  };
+  sessionCredentials.set(sourceKey, credentials);
+  getIpcRenderer()?.invoke('webdavCredentials:set', {
+    sourceKey,
+    credentials,
   });
   return sourceKey;
 }
 
 export function getRememberedWebdavCredentials(sourceKey) {
   return sessionCredentials.get(sourceKey) || null;
+}
+
+export async function getStoredWebdavCredentials(sourceKey) {
+  const remembered = getRememberedWebdavCredentials(sourceKey);
+  if (remembered) return remembered;
+
+  const credentials = await getIpcRenderer()?.invoke(
+    'webdavCredentials:get',
+    sourceKey
+  );
+  if (credentials) {
+    sessionCredentials.set(sourceKey, credentials);
+  }
+  return credentials || null;
+}
+
+export function forgetWebdavCredentials(sourceKey) {
+  if (!sourceKey) return;
+  sessionCredentials.delete(sourceKey);
+  getIpcRenderer()?.invoke('webdavCredentials:delete', sourceKey);
+}
+
+export async function readWebdavAudioMetadata({
+  sourceKey,
+  path,
+  contentType,
+} = {}) {
+  const result = await getIpcRenderer()?.invoke('webdavMetadata:read', {
+    sourceKey,
+    path,
+    contentType,
+  });
+  if (!result || result.error) return null;
+  return result;
+}
+
+function encodePathForProxy(path = '/') {
+  return normalizeWebdavPath(path)
+    .split('/')
+    .map(part => encodeURIComponent(part))
+    .join('/');
+}
+
+export function buildWebdavProxyUrl(sourceKey, path) {
+  if (!sourceKey || process.env.IS_ELECTRON !== true) return '';
+  return `http://127.0.0.1:${INTERNAL_SERVER_PORT}/webdav-source/${encodeURIComponent(
+    sourceKey
+  )}${encodePathForProxy(path)}`;
 }
 
 function buildAuthHeader({ username, password } = {}) {

@@ -29,6 +29,7 @@ import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer';
 import { EventEmitter } from 'events';
 import express from 'express';
 import Store from 'electron-store';
+import axios from 'axios';
 import { createMpris, createDbus } from '@/electron/mpris';
 import { spawn } from 'child_process';
 const clc = require('cli-color');
@@ -36,6 +37,36 @@ const log = text => {
   console.log(`${clc.blueBright('[background.js]')} ${text}`);
 };
 const INTERNAL_SERVER_PORT = 27329;
+
+function getSafeStorage() {
+  try {
+    return require('electron').safeStorage || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function decodeCredentials(record) {
+  if (!record) return null;
+  if (!record.encrypted) return record.value || record;
+
+  const safeStorage = getSafeStorage();
+  if (
+    !safeStorage ||
+    typeof safeStorage.isEncryptionAvailable !== 'function' ||
+    !safeStorage.isEncryptionAvailable()
+  ) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(
+      safeStorage.decryptString(Buffer.from(record.value, 'base64'))
+    );
+  } catch (error) {
+    return null;
+  }
+}
 
 const closeOnLinux = (e, win, store) => {
   let closeOpt = store.get('settings.closeAppOption');
@@ -160,6 +191,56 @@ class Background {
             progress: result._progress,
           });
         });
+    });
+    expressApp.get('/webdav-source/:sourceKey/*', async (req, res) => {
+      const sourceKey = decodeURIComponent(req.params.sourceKey || '');
+      const allCredentials = this.store.get('webdavCredentials') || {};
+      const credentials = decodeCredentials(allCredentials[sourceKey]);
+      if (!credentials || !credentials.serverUrl) {
+        res.status(404).send('Unknown WebDAV source');
+        return;
+      }
+
+      try {
+        const remotePath = `/${req.params[0] || ''}`;
+        const url = `${String(credentials.serverUrl).replace(/\/+$/, '')}${
+          remotePath === '/' ? '' : remotePath
+        }`;
+        const auth = Buffer.from(
+          `${credentials.username || ''}:${credentials.password || ''}`
+        ).toString('base64');
+        const response = await axios({
+          url,
+          method: 'get',
+          responseType: 'stream',
+          headers: {
+            ...(credentials.username || credentials.password
+              ? { Authorization: `Basic ${auth}` }
+              : {}),
+            ...(req.headers.range ? { Range: req.headers.range } : {}),
+          },
+          validateStatus: status => status >= 200 && status < 400,
+        });
+
+        res.status(response.status);
+        [
+          'content-type',
+          'content-length',
+          'content-range',
+          'accept-ranges',
+          'etag',
+          'last-modified',
+        ].forEach(header => {
+          if (response.headers[header]) {
+            res.setHeader(header, response.headers[header]);
+          }
+        });
+        response.data.pipe(res);
+      } catch (error) {
+        res
+          .status((error.response && error.response.status) || 502)
+          .send('WebDAV proxy failed');
+      }
     });
     this.expressApp = expressApp.listen(INTERNAL_SERVER_PORT, '127.0.0.1');
   }

@@ -514,13 +514,56 @@
       </div>
 
       <div>
+        <h3>音乐源</h3>
+        <div class="source-list">
+          <div
+            v-for="source in configuredSources"
+            :key="source.key"
+            class="source-item"
+          >
+            <div class="left">
+              <div class="title">
+                {{ source.name }}
+                <span v-if="source.key === data.activeProvider">当前默认</span>
+              </div>
+              <div class="description">{{ source.description }}</div>
+            </div>
+            <div class="right">
+              <button
+                :disabled="
+                  source.key === data.activeProvider || !source.enabled
+                "
+                @click="changeActiveProvider(source.key)"
+              >
+                设为默认
+              </button>
+              <button
+                v-if="source.key !== 'navidrome'"
+                :disabled="!source.configured"
+                @click="toggleSourceEnabled(source.key)"
+              >
+                {{ source.enabled ? '禁用' : '启用' }}
+              </button>
+              <button
+                v-if="source.key !== 'navidrome'"
+                :disabled="!source.configured"
+                @click="deleteSource(source.key)"
+              >
+                删除
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
         <h3>WebDAV</h3>
         <div class="item webdav-source">
           <div class="left">
             <div class="title">WebDAV 音乐源</div>
             <div class="description">
               用 PROPFIND
-              测试连接并浏览目录。密码只用于本次请求，不会保存到本地。
+              测试连接并浏览目录。密码会保存到主进程存储，支持时使用系统加密。
             </div>
           </div>
         </div>
@@ -711,7 +754,10 @@ import { isLooseLoggedIn, doLogout } from '@/utils/auth';
 import { auth as lastfmAuth } from '@/api/lastfm';
 import { changeAppearance, bytesToSize } from '@/utils/common';
 import { countDBSize, clearDB } from '@/utils/db';
-import { getProvider } from '@/providers';
+import {
+  getProvider,
+  setActiveProvider as persistActiveProvider,
+} from '@/providers';
 import pkg from '../../package.json';
 
 const electron =
@@ -1150,6 +1196,27 @@ export default {
         });
       },
     },
+    configuredSources() {
+      const sources = this.data.sources || {};
+      const webdavSource = sources.webdav;
+      return [
+        {
+          key: 'navidrome',
+          name: 'Navidrome',
+          enabled: true,
+          description: 'OpenSubsonic/Navidrome 服务器音乐库',
+        },
+        {
+          key: 'webdav',
+          name: 'WebDAV',
+          enabled: Boolean(webdavSource?.enabled),
+          configured: Boolean(webdavSource),
+          description: webdavSource?.enabled
+            ? `${webdavSource.serverUrl}${webdavSource.path || '/'}`
+            : '尚未连接 WebDAV 音乐源',
+        },
+      ];
+    },
     isLastfmConnected() {
       return this.lastfm && this.lastfm.key !== undefined;
     },
@@ -1165,7 +1232,51 @@ export default {
   },
   methods: {
     ...mapActions(['showToast']),
-    ...mapMutations(['upsertSource']),
+    ...mapMutations(['removeSource', 'setActiveProvider', 'upsertSource']),
+    changeActiveProvider(key) {
+      persistActiveProvider(key);
+      this.setActiveProvider(key);
+      this.showToast(`已切换默认音乐源为 ${key}`);
+    },
+    toggleSourceEnabled(key) {
+      const source = this.data.sources?.[key];
+      if (!source) return;
+      const enabled = !source.enabled;
+      this.upsertSource({
+        ...source,
+        enabled,
+      });
+      if (!enabled && this.data.activeProvider === key) {
+        persistActiveProvider('navidrome');
+        this.setActiveProvider('navidrome');
+      }
+      this.showToast(`${source.name || key} 已${enabled ? '启用' : '禁用'}`);
+    },
+    deleteSource(key) {
+      const source = this.data.sources?.[key];
+      if (!source) return;
+      if (!confirm(`确定删除 ${source.name || key} 音乐源？`)) return;
+
+      if (key === 'webdav') {
+        getProvider('webdav').forgetCredentials(source.sourceKey);
+        this.webdavForm = {
+          serverUrl: '',
+          path: '/Music',
+          username: '',
+          password: '',
+        };
+        this.webdavCurrentPath = '/';
+        this.webdavEntries = [];
+        this.webdavError = '';
+      }
+
+      this.removeSource(key);
+      if (this.data.activeProvider === key) {
+        persistActiveProvider('navidrome');
+        this.setActiveProvider('navidrome');
+      }
+      this.showToast(`${source.name || key} 音乐源已删除`);
+    },
     loadWebdavSource() {
       const source = this.data.sources?.webdav;
       if (!source) return;
@@ -1208,19 +1319,20 @@ export default {
           this.webdavForm.path = this.webdavCurrentPath;
           this.webdavEntries = entries;
           if (saveSource) {
+            const sourceKey = webdavProvider.rememberCredentials(
+              this.getWebdavRequestParams(this.webdavCurrentPath)
+            );
             this.upsertSource({
               key: 'webdav',
               name: 'WebDAV',
               provider: 'webdav',
               enabled: true,
+              sourceKey,
               serverUrl: this.webdavForm.serverUrl.trim(),
               path: this.webdavCurrentPath,
               username: this.webdavForm.username.trim(),
               connectedAt: Date.now(),
             });
-            webdavProvider.rememberCredentials(
-              this.getWebdavRequestParams(this.webdavCurrentPath)
-            );
             this.showToast('WebDAV 连接成功');
           }
         })
@@ -1243,7 +1355,7 @@ export default {
       return webdavProvider
         .indexDirectoryTracks(
           this.getWebdavRequestParams(this.webdavCurrentPath),
-          audioEntries
+          this.webdavEntries
         )
         .then(tracks => {
           this.showToast(`已索引 ${tracks.length} 首 WebDAV 音频`);

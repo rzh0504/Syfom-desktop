@@ -1,4 +1,10 @@
-import { getActiveProvider } from '@/providers';
+import { getActiveProvider, getProvider } from '@/providers';
+
+function providerForId(id) {
+  return String(id).startsWith('webdav:')
+    ? getProvider('webdav')
+    : getActiveProvider();
+}
 
 /**
  * 获取歌手单曲
@@ -6,7 +12,7 @@ import { getActiveProvider } from '@/providers';
  * @param {number} id - 歌手 id, 可由搜索接口获得
  */
 export function getArtist(id) {
-  return getActiveProvider().getArtistDetail(id);
+  return providerForId(id).getArtistDetail(id);
 }
 
 /**
@@ -21,7 +27,7 @@ export function getArtist(id) {
  * @param {number=} params.offset
  */
 export function getArtistAlbum(params) {
-  return getActiveProvider().getArtistAlbums(params.id, params.limit);
+  return providerForId(params.id).getArtistAlbums(params.id, params.limit);
 }
 
 /**

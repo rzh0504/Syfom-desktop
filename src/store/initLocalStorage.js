@@ -37,6 +37,8 @@ let localStorage = {
     lastRefreshCookieDate: 0,
     loginMode: null,
     activeProvider: 'navidrome',
+    localLikedSongIds: [],
+    localPlayHistory: [],
     sources: {
       navidrome: {
         key: 'navidrome',

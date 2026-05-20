@@ -41,17 +41,33 @@ export function getTrackDetail(ids) {
     .split(',')
     .map(id => id.trim())
     .filter(Boolean);
-  const provider = idsInArray.every(id => id.startsWith('webdav:'))
-    ? getProvider('webdav')
-    : getActiveProvider();
+  const webdavIds = idsInArray.filter(id => id.startsWith('webdav:'));
+  const activeIds = idsInArray.filter(id => !id.startsWith('webdav:'));
 
   const fetchLatest = () => {
-    return provider.getSongDetails(ids).then(data => {
-      data.songs.map(song => {
-        const privileges = data.privileges.find(t => t.id === song.id);
-        cacheTrackDetail(song, privileges);
+    const requests = [];
+    if (activeIds.length > 0) {
+      requests.push(getActiveProvider().getSongDetails(activeIds.join(',')));
+    }
+    if (webdavIds.length > 0) {
+      requests.push(getProvider('webdav').getSongDetails(webdavIds.join(',')));
+    }
+
+    return Promise.all(requests).then(results => {
+      const songs = results.flatMap(data => data.songs || []);
+      const privileges = results.flatMap(data => data.privileges || []);
+      songs.forEach(song => {
+        const privilege = privileges.find(t => t.id === song.id);
+        cacheTrackDetail(song, privilege);
       });
-      return data;
+      return {
+        songs: idsInArray
+          .map(id => songs.find(song => String(song.id) === id))
+          .filter(Boolean),
+        privileges: idsInArray
+          .map(id => privileges.find(item => String(item.id) === id))
+          .filter(Boolean),
+      };
     });
   };
   fetchLatest();
@@ -67,13 +83,14 @@ export function getTrackDetail(ids) {
  * @param {number} id - 音乐 id
  */
 export function getLyric(id) {
+  const provider = String(id).startsWith('webdav:')
+    ? getProvider('webdav')
+    : getActiveProvider();
   const fetchLatest = () => {
-    return getActiveProvider()
-      .getLyrics(id)
-      .then(result => {
-        cacheLyric(id, result);
-        return result;
-      });
+    return provider.getLyrics(id).then(result => {
+      cacheLyric(id, result);
+      return result;
+    });
   };
 
   fetchLatest();
@@ -133,9 +150,12 @@ export function likeATrack(params) {
  * @param {number=} params.time
  */
 export function scrobble(params) {
-  return getActiveProvider().scrobbleSong({
+  const provider = String(params.id).startsWith('webdav:')
+    ? getProvider('webdav')
+    : getActiveProvider();
+  return provider.scrobbleSong({
     id: params.id,
     time: params.time,
-    submission: true,
+    submission: params.submission !== false,
   });
 }

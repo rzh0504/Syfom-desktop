@@ -49,6 +49,34 @@ function setTrayLikeState(isLiked) {
   }
 }
 
+function recordLocalPlayHistory(track) {
+  if (!track?.id) return;
+  const history = store.state.data.localPlayHistory || [];
+  const entry = {
+    id: track.id,
+    uid: track.uid || track.id,
+    source: track.source || 'navidrome',
+    playTime: Date.now(),
+    track,
+  };
+  store.commit('updateData', {
+    key: 'localPlayHistory',
+    value: [entry, ...history.filter(item => item.id !== track.id)].slice(
+      0,
+      500
+    ),
+  });
+}
+
+function artworkFor(track, size) {
+  const src = track.al?.picUrl || '';
+  if (!src) return '';
+  if (src.startsWith('data:') || src.startsWith('http://127.0.0.1:')) {
+    return src;
+  }
+  return `${src}?param=${size}y${size}`;
+}
+
 export default class {
   constructor() {
     // 播放器状态
@@ -290,10 +318,14 @@ export default class {
     );
     const trackDuration = ~~(track.dt / 1000);
     time = completed ? trackDuration : ~~time;
+    if (completed || time >= Math.min(30, Math.floor(trackDuration / 2))) {
+      recordLocalPlayHistory(track);
+    }
     scrobble({
       id: track.id,
       sourceid: this.playlistSource.id,
-      time,
+      time: Date.now(),
+      submission: completed,
     });
   }
   _playAudioSource(source, autoplay = true) {
@@ -366,7 +398,15 @@ export default class {
     if (track.source === 'webdav') {
       return getProvider('webdav')
         .getAudioSource(track)
-        .then(data => this._getAudioSourceBlobURL(data));
+        .then(source => {
+          if (typeof source === 'string') {
+            if (store.state.settings.automaticallyCacheSongs) {
+              cacheTrackSource(track, source, 320000, 'webdav');
+            }
+            return source;
+          }
+          return this._getAudioSourceBlobURL(source);
+        });
     }
 
     if (isAccountLoggedIn()) {
@@ -516,16 +556,16 @@ export default class {
       album: track.al.name,
       artwork: [
         {
-          src: track.al.picUrl + '?param=224y224',
+          src: artworkFor(track, 224),
           type: 'image/jpg',
           sizes: '224x224',
         },
         {
-          src: track.al.picUrl + '?param=512y512',
+          src: artworkFor(track, 512),
           type: 'image/jpg',
           sizes: '512x512',
         },
-      ],
+      ].filter(item => item.src),
       length: this.currentTrackDuration,
       trackId: this.current,
       url: '/trackid/' + track.id,

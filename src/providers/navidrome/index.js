@@ -420,8 +420,8 @@ export async function getStarred() {
 export async function scrobbleSong({ id, time, submission = true }) {
   await requestSubsonic('scrobble', {
     id,
-    time,
-    submission,
+    time: Number(time) > 1000000000000 ? Number(time) : Date.now(),
+    submission: submission ? 'true' : 'false',
   });
   return { code: 200 };
 }
