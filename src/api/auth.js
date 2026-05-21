@@ -1,4 +1,4 @@
-import { getActiveProvider } from '@/providers';
+import { getActiveProvider, getProvider } from '@/providers';
 
 /**
  * 手机登录
@@ -46,7 +46,7 @@ export function loginWithEmail(params) {
  * @param {string} params.password
  */
 export async function loginWithAccount(params) {
-  const result = await getActiveProvider().login({
+  const result = await getProvider('navidrome').login({
     serverUrl: params.server,
     username: params.username,
     password: params.password,
