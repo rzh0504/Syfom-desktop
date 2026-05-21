@@ -101,7 +101,7 @@ export function getLyric(id) {
 }
 
 /**
- * 获取服务器歌曲列表
+ * 获取歌曲列表
  * @param {Object} params
  * @param {number=} params.offset
  * @param {number=} params.limit
@@ -109,11 +109,6 @@ export function getLyric(id) {
 export function getLibrarySongs(params = {}) {
   const { offset = 0, limit = 100 } = params;
   return getActiveProvider().getLibrarySongs({ offset, limit });
-}
-
-export function getWebdavLibrarySongs(params = {}) {
-  const { offset = 0, limit = 100 } = params;
-  return getProvider('webdav').getLibrarySongs({ offset, limit });
 }
 
 /**

@@ -226,6 +226,24 @@ export default {
           this.setActiveProvider('webdav');
           this.updateData({ key: 'loginMode', value: 'webdav' });
           this.updateData({ key: 'user', value: data.profile || {} });
+          webdavProvider
+            .scanDirectory(params)
+            .then(stats => {
+              this.updateData({
+                key: 'librarySongsUpdatedAt',
+                value: Date.now(),
+              });
+              this.$store.dispatch(
+                'showToast',
+                `WebDAV 索引完成，已读取 ${stats.audio} 首歌曲`
+              );
+            })
+            .catch(error => {
+              this.$store.dispatch(
+                'showToast',
+                `WebDAV 后台索引失败：${error.message || error}`
+              );
+            });
           this.$router.push({ path: '/library' });
         })
         .catch(error => {
