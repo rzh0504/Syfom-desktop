@@ -22,7 +22,10 @@ export default {
   name: 'Modal',
   props: {
     show: Boolean,
-    close: Function,
+    close: {
+      type: Function,
+      default: () => {},
+    },
     title: {
       type: String,
       default: 'Title',

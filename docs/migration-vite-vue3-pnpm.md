@@ -99,4 +99,7 @@ Current phase: Phase 5 - manual runtime QA
 - `ButtonIcon` sets a root text color so slotted SVG icons inherit the intended theme color under Vue 3 scoped-slot styling.
 - `ContextMenu` uses Vue 3 `:deep()` selectors for slotted menu content (`.item`, `.item-info`, `hr`), restoring the pre-migration menu layout for profile and track context menus.
 - Husky was upgraded from v4 to v9 with `.husky/pre-commit`; the old v4 Git hook used `pnpx --no-install`, which is incompatible with pnpm 11 / `pnpm dlx`.
+- Discord Rich Presence support was removed by request, including renderer settings, Player IPC calls, main-process RPC handlers, locale strings, and `discord-rich-presence` plus its git subdependency chain.
+- Deprecated `vscode-codicons` was replaced with `@vscode/codicons`.
+- Electron renderer windows now use `webSecurity: true`; external Last.fm windows use `nodeIntegration: false` and `contextIsolation: true`. `index.html` now includes a CSP meta tag for the Vite/Electron renderer.
 - Full GUI/runtime QA is still pending. The current automated checks verify install, lint, typecheck, Vite build, Electron dev startup, and Windows packaging.

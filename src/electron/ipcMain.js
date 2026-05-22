@@ -10,47 +10,6 @@ const log = text => {
   console.log(`${clc.blueBright('[ipcMain.js]')} ${text}`);
 };
 
-let discordClient = null;
-let isDiscordPresenceDisabled = false;
-
-const getDiscordClient = () => {
-  if (isDiscordPresenceDisabled) return null;
-  if (discordClient) return discordClient;
-
-  try {
-    const createDiscordRichPresence = require('discord-rich-presence');
-    discordClient = createDiscordRichPresence('818936529484906596');
-
-    if (discordClient && typeof discordClient.on === 'function') {
-      discordClient.on('error', err => {
-        log(`discord rpc error: ${(err && err.message) || err}`);
-      });
-    }
-
-    return discordClient;
-  } catch (err) {
-    isDiscordPresenceDisabled = true;
-    log(`discord rpc init failed: ${(err && err.message) || err}`);
-    return null;
-  }
-};
-
-const updateDiscordPresence = payload => {
-  const client = getDiscordClient();
-  if (!client || typeof client.updatePresence !== 'function') return;
-
-  try {
-    const result = client.updatePresence(payload);
-    if (result && typeof result.catch === 'function') {
-      result.catch(err => {
-        log(`discord rpc update failed: ${(err && err.message) || err}`);
-      });
-    }
-  } catch (err) {
-    log(`discord rpc update failed: ${(err && err.message) || err}`);
-  }
-};
-
 const exitAsk = (e, win) => {
   e.preventDefault(); //阻止默认行为
   dialog
@@ -147,31 +106,6 @@ export function initIpcMain(win, store, trayEventEmitter) {
       log('unregister global shortcut');
       globalShortcut.unregisterAll();
     }
-  });
-
-  ipcMain.on('playDiscordPresence', (event, track) => {
-    updateDiscordPresence({
-      details: track.name + ' - ' + track.ar.map(ar => ar.name).join(','),
-      state: track.al.name,
-      endTimestamp: Date.now() + track.dt,
-      largeImageKey: track.al.picUrl,
-      largeImageText: 'Listening ' + track.name,
-      smallImageKey: 'play',
-      smallImageText: 'Playing',
-      instance: true,
-    });
-  });
-
-  ipcMain.on('pauseDiscordPresence', (event, track) => {
-    updateDiscordPresence({
-      details: track.name + ' - ' + track.ar.map(ar => ar.name).join(','),
-      state: track.al.name,
-      largeImageKey: track.al.picUrl,
-      largeImageText: 'YesPlayMusic',
-      smallImageKey: 'pause',
-      smallImageText: 'Pause',
-      instance: true,
-    });
   });
 
   ipcMain.on('setProxy', (event, config) => {

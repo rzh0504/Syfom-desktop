@@ -316,25 +316,6 @@
           <button v-else @click="lastfmConnect()"> 授权连接 </button>
         </div>
       </div>
-      <div v-if="isElectron" class="item">
-        <div class="left">
-          <div class="title">
-            {{ $t('settings.enableDiscordRichPresence') }}</div
-          >
-        </div>
-        <div class="right">
-          <div class="toggle">
-            <input
-              id="enable-discord-rich-presence"
-              v-model="enableDiscordRichPresence"
-              type="checkbox"
-              name="enable-discord-rich-presence"
-            />
-            <label for="enable-discord-rich-presence"></label>
-          </div>
-        </div>
-      </div>
-
       <h3>{{ $t('settings.others') }}</h3>
       <div v-if="isElectron && !isMac" class="item">
         <div class="left">
@@ -912,17 +893,6 @@ export default {
       set(value) {
         this.$store.commit('updateSettings', {
           key: 'closeAppOption',
-          value,
-        });
-      },
-    },
-    enableDiscordRichPresence: {
-      get() {
-        return this.settings.enableDiscordRichPresence;
-      },
-      set(value) {
-        this.$store.commit('updateSettings', {
-          key: 'enableDiscordRichPresence',
           value,
         });
       },

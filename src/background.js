@@ -192,9 +192,8 @@ class Background {
       title: 'YesPlayMusic',
       show: false,
       webPreferences: {
-        webSecurity: false,
+        webSecurity: true,
         nodeIntegration: true,
-        enableRemoteModule: true,
         contextIsolation: false,
       },
       backgroundColor:
@@ -355,10 +354,9 @@ class Background {
           titleBarStyle: 'default',
           title: 'YesPlayMusic',
           webPreferences: {
-            webSecurity: false,
-            nodeIntegration: true,
-            enableRemoteModule: true,
-            contextIsolation: false,
+            webSecurity: true,
+            nodeIntegration: false,
+            contextIsolation: true,
           },
         });
         newWindow.loadURL(url);

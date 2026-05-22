@@ -18,7 +18,6 @@ let localStorage = {
     lyricsBackground: true,
     enableOsdlyricsSupport: false,
     closeAppOption: 'ask',
-    enableDiscordRichPresence: false,
     enableGlobalShortcut: true,
     showLibraryDefault: false,
     subTitleDefault: false,

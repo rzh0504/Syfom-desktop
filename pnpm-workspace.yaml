@@ -6,10 +6,6 @@ overrides:
   degenerator: 2.2.0
   electron-builder: ^23.0.0
 
-# Legacy dependency `discord-rich-presence` pulls `discord-rpc` from git.
-# Keep this unblocked until the Electron/Vue 3 migration can replace it.
-blockExoticSubdeps: false
-
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - '@swc/core'
@@ -22,9 +18,6 @@ onlyBuiltDependencies:
   - sharp
   - yorkie
 
-ignoredBuiltDependencies:
-  - register-scheme
-
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
@@ -34,7 +27,6 @@ allowBuilds:
   es5-ext: true
   esbuild: true
   husky: true
-  register-scheme: false
   sharp: true
   usocket: false
   yorkie: true

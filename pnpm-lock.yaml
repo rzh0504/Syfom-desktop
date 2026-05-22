@@ -13,6 +13,9 @@ importers:
 
   .:
     dependencies:
+      '@vscode/codicons':
+        specifier: ^0.0.39
+        version: 0.0.39
       axios:
         specifier: ^0.26.1
         version: 0.26.1
@@ -37,9 +40,6 @@ importers:
       dexie:
         specifier: ^3.0.3
         version: 3.2.7
-      discord-rich-presence:
-        specifier: ^0.0.8
-        version: 0.0.8
       electron-context-menu:
         specifier: ^3.1.2
         version: 3.6.1
@@ -100,9 +100,6 @@ importers:
       tunnel:
         specifier: ^0.0.6
         version: 0.0.6
-      vscode-codicons:
-        specifier: ^0.0.17
-        version: 0.0.17
       vue:
         specifier: ^3.5.34
         version: 3.5.34(typescript@6.0.3)
@@ -1302,6 +1299,9 @@ packages:
   '@volar/typescript@2.4.28':
     resolution: {integrity: sha512-Ja6yvWrbis2QtN4ClAKreeUZPVYMARDYZl9LMEv1iQ1QdepB6wn0jTRxA9MftYmYa4DQ4k/DaSZpFPUfxl8giw==}
 
+  '@vscode/codicons@0.0.39':
+    resolution: {integrity: sha512-gO09UZrOBONyzI8LWPRsCahnmUR16hkRQCJOSJzX8L4dC5aa6YGP4nS+gh5oSekMlM8LFJXMAgqBMGGiktdRJw==}
+
   '@vue/compiler-core@3.5.34':
     resolution: {integrity: sha512-s9cLyK5mLcvZ4Agva5QgRsQyLKvts9WbU9DB6NqiZkkGEdwmcEiylj5Jbwkp680drF/NNCV8OlAJSe+yMLxaJw==}
 
@@ -2049,13 +2049,6 @@ packages:
   dir-glob@3.0.1:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==}
     engines: {node: '>=8'}
-
-  discord-rich-presence@0.0.8:
-    resolution: {integrity: sha512-IpVMPjv15C9UvppxvrrGdv6bzQHOW1P1vLoMH15HvdJwGJ3dBd2bnrJ63Uy36YRUfrAMxGLiwUDHncvC8AuPaQ==}
-
-  discord-rpc@https://codeload.github.com/discordjs/rpc/tar.gz/9e7de2a6d917591f10a66389e62e1dc053c04fec:
-    resolution: {gitHosted: true, tarball: https://codeload.github.com/discordjs/rpc/tar.gz/9e7de2a6d917591f10a66389e62e1dc053c04fec}
-    version: 4.0.1
 
   dmg-builder@23.6.0:
     resolution: {integrity: sha512-jFZvY1JohyHarIAlTbfQOk+HnceGjjAdFjVn3n8xlDWKsYNqbO4muca6qXEZTfGXeQMG7TYim6CeS5XKSfSsGA==}
@@ -3485,15 +3478,6 @@ packages:
   node-addon-api@7.1.1:
     resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
 
-  node-fetch@2.7.0:
-    resolution: {integrity: sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==}
-    engines: {node: 4.x || >=6.0.0}
-    peerDependencies:
-      encoding: ^0.1.0
-    peerDependenciesMeta:
-      encoding:
-        optional: true
-
   node-gyp@7.1.2:
     resolution: {integrity: sha512-CbpcIo7C3eMu3dL1c3d0xw449fHIGALIJsRP4DDPHpyiW8vcriNY7ubh9TE4zEKfSxscY7PjeFnshE7h75ynjQ==}
     engines: {node: '>= 10.12.0'}
@@ -3914,10 +3898,6 @@ packages:
   regexp.prototype.flags@1.5.4:
     resolution: {integrity: sha512-dYqgNSZbDwkaJ2ceRd9ojCGjBq+mOm9LmtXnAnEGyHhN/5R7iDW2TRw3h+o/jCFxus3P2LfWIIiwowAjANm7IA==}
     engines: {node: '>= 0.4'}
-
-  register-scheme@https://codeload.github.com/devsnek/node-register-scheme/tar.gz/e7cc9a63a1f512565da44cb57316d9fb10750e17:
-    resolution: {gitHosted: true, tarball: https://codeload.github.com/devsnek/node-register-scheme/tar.gz/e7cc9a63a1f512565da44cb57316d9fb10750e17}
-    version: 0.0.2
 
   register-service-worker@1.7.2:
     resolution: {integrity: sha512-CiD3ZSanZqcMPRhtfct5K9f7i3OLCcBBWsJjLh1gW9RO/nS94sVzY59iS+fgYBOBqaBpf4EzfqUF3j9IG+xo8A==}
@@ -4366,9 +4346,6 @@ packages:
     resolution: {integrity: sha512-nlLsUzgm1kfLXSXfRZMc1KLAugd4hqJHDTvc2hDIwS3mZAfMEuMbc03SujMF+GEcpaX/qboeycw6iO8JwVv2+g==}
     engines: {node: '>=0.8'}
 
-  tr46@0.0.3:
-    resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
-
   traverse@0.6.11:
     resolution: {integrity: sha512-vxXDZg8/+p3gblxB6BhhG5yWVn1kGRlaL8O78UDXc3wRnPizB5g83dcvWV1jpDMIPnjZjOFuxlMmE82XJ4407w==}
     engines: {node: '>= 0.4'}
@@ -4594,10 +4571,6 @@ packages:
       yaml:
         optional: true
 
-  vscode-codicons@0.0.17:
-    resolution: {integrity: sha512-Hzclzhz9ouj5sfjDbXE78fciSGwDrlOMimkRIxFNy0pmHoexzLH1+OKTbrlR+Gz17C9ZCfX7Mlpq21jGsyhgSg==}
-    deprecated: This package is deprecated, please use @vscode/codicons https://www.npmjs.com/package/@vscode/codicons
-
   vscode-uri@3.1.0:
     resolution: {integrity: sha512-/BpdSx+yCQGnCvecbyXdxHDkuk55/G3xwnC0GqY4gmQ3j+A+g8kzzgB4Nk/SINjqn6+waqw3EgbVF2QKExkRxQ==}
 
@@ -4649,12 +4622,6 @@ packages:
     peerDependencies:
       vue: ^3.2.0
 
-  webidl-conversions@3.0.1:
-    resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
-
-  whatwg-url@5.0.0:
-    resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
-
   which-boxed-primitive@1.1.1:
     resolution: {integrity: sha512-TbX3mj8n0odCBFVlY8AxkqcHASw3L60jIuF8jFP78az3C2YhmGvqbHBpAjTRH2/xqYunrJ9g1jSyjCjpoWzIAA==}
     engines: {node: '>= 0.4'}
@@ -4689,18 +4656,6 @@ packages:
 
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
-
-  ws@7.5.10:
-    resolution: {integrity: sha512-+dbF1tHwZpXcbOJdVOkzLDxZP1ailvSxM6ZweXTegylPny803bFhA+vqBYw4s31NSAk4S2Qz+AKXK9a4wkdjcQ==}
-    engines: {node: '>=8.3.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: ^5.0.2
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
 
   x11@2.3.0:
     resolution: {integrity: sha512-Ep4DbqZkVHvZNVht+vvELcfdpGKnfh2kZuKdXqyZdtJx3UdvgUGrMQ9lwPNV33tDs86MF4YagC6+E2fZXikF6A==}
@@ -5773,6 +5728,8 @@ snapshots:
       path-browserify: 1.0.1
       vscode-uri: 3.1.0
 
+  '@vscode/codicons@0.0.39': {}
+
   '@vue/compiler-core@3.5.34':
     dependencies:
       '@babel/parser': 7.29.3
@@ -6668,25 +6625,6 @@ snapshots:
   dir-glob@3.0.1:
     dependencies:
       path-type: 4.0.0
-
-  discord-rich-presence@0.0.8:
-    dependencies:
-      discord-rpc: https://codeload.github.com/discordjs/rpc/tar.gz/9e7de2a6d917591f10a66389e62e1dc053c04fec
-    transitivePeerDependencies:
-      - bufferutil
-      - encoding
-      - utf-8-validate
-
-  discord-rpc@https://codeload.github.com/discordjs/rpc/tar.gz/9e7de2a6d917591f10a66389e62e1dc053c04fec:
-    dependencies:
-      node-fetch: 2.7.0
-      ws: 7.5.10
-    optionalDependencies:
-      register-scheme: https://codeload.github.com/devsnek/node-register-scheme/tar.gz/e7cc9a63a1f512565da44cb57316d9fb10750e17
-    transitivePeerDependencies:
-      - bufferutil
-      - encoding
-      - utf-8-validate
 
   dmg-builder@23.6.0:
     dependencies:
@@ -8428,10 +8366,6 @@ snapshots:
   node-addon-api@7.1.1:
     optional: true
 
-  node-fetch@2.7.0:
-    dependencies:
-      whatwg-url: 5.0.0
-
   node-gyp@7.1.2:
     dependencies:
       env-paths: 2.2.1
@@ -8890,12 +8824,6 @@ snapshots:
       get-proto: 1.0.1
       gopd: 1.2.0
       set-function-name: 2.0.2
-
-  register-scheme@https://codeload.github.com/devsnek/node-register-scheme/tar.gz/e7cc9a63a1f512565da44cb57316d9fb10750e17:
-    dependencies:
-      bindings: 1.5.0
-      node-addon-api: 1.7.2
-    optional: true
 
   register-service-worker@1.7.2: {}
 
@@ -9498,8 +9426,6 @@ snapshots:
       punycode: 2.3.1
     optional: true
 
-  tr46@0.0.3: {}
-
   traverse@0.6.11:
     dependencies:
       gopd: 1.2.0
@@ -9727,8 +9653,6 @@ snapshots:
       fsevents: 2.3.3
       sass: 1.99.0
 
-  vscode-codicons@0.0.17: {}
-
   vscode-uri@3.1.0: {}
 
   vue-eslint-parser@9.4.3(eslint@8.57.1):
@@ -9785,13 +9709,6 @@ snapshots:
     dependencies:
       '@vue/devtools-api': 6.6.4
       vue: 3.5.34(typescript@6.0.3)
-
-  webidl-conversions@3.0.1: {}
-
-  whatwg-url@5.0.0:
-    dependencies:
-      tr46: 0.0.3
-      webidl-conversions: 3.0.1
 
   which-boxed-primitive@1.1.1:
     dependencies:
@@ -9852,8 +9769,6 @@ snapshots:
       strip-ansi: 6.0.1
 
   wrappy@1.0.2: {}
-
-  ws@7.5.10: {}
 
   x11@2.3.0:
     dependencies:
