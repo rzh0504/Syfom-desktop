@@ -613,6 +613,7 @@ import { auth as lastfmAuth } from '@/api/lastfm';
 import { changeAppearance, bytesToSize } from '@/utils/common';
 import { countDBSize, clearDB } from '@/utils/db';
 import { getProvider } from '@/providers';
+import locale from '@/locale';
 import pkg from '../../package.json';
 
 const validShortcutCodes = ['=', '-', '~', '[', ']', ';', "'", ',', '.', '/'];
@@ -717,7 +718,7 @@ export default {
         return this.settings.lang;
       },
       set(lang) {
-        this.$i18n.locale = lang;
+        locale.locale = lang;
         this.$store.commit('changeLang', lang);
       },
     },

@@ -125,7 +125,8 @@ class Background {
   }
 
   async initDevtools() {
-    // Install Vue Devtools extension
+    if (process.env.ENABLE_VUE_DEVTOOLS !== 'true') return;
+
     try {
       const installExtension =
         typeof devtoolsInstaller === 'function'
@@ -135,7 +136,9 @@ class Background {
     } catch (e) {
       console.error('Vue Devtools failed to install:', e.toString());
     }
+  }
 
+  initDevExitHandlers() {
     // Exit cleanly on request from parent process in development mode.
     if (isWindows) {
       process.on('message', data => {
@@ -376,6 +379,7 @@ class Background {
 
       // for development
       if (isDevelopment) {
+        this.initDevExitHandlers();
         this.initDevtools();
       }
 

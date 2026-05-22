@@ -1,5 +1,4 @@
 import { createApp } from 'vue';
-import { createGtag } from 'vue-gtag';
 import App from './App.vue';
 import router from './router';
 import store from './store';
@@ -39,10 +38,4 @@ createApp(App)
   .use(svgIcons)
   .use(filters)
   .use(clipboard)
-  .use(
-    createGtag({
-      tagId: 'G-KMJJCFZDKF',
-      pageTracker: { router },
-    })
-  )
   .mount('#app');

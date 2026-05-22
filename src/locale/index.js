@@ -7,7 +7,7 @@ import zhTW from './lang/zh-TW.js';
 import tr from './lang/tr.js';
 
 const i18n = createI18n({
-  legacy: true,
+  legacy: false,
   globalInjection: true,
   locale: store.state.settings.lang,
   messages: {
@@ -23,10 +23,10 @@ const i18n = createI18n({
 i18n.t = (...args) => i18n.global.t(...args);
 Object.defineProperty(i18n, 'locale', {
   get() {
-    return i18n.global.locale;
+    return i18n.global.locale.value;
   },
   set(value) {
-    i18n.global.locale = value;
+    i18n.global.locale.value = value;
   },
 });
 
