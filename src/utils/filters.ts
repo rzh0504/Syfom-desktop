@@ -49,7 +49,10 @@ export function formatTime(
   }
 }
 
-export function formatDate(timestamp: string | number | Date, format = 'MMM D, YYYY'): string {
+export function formatDate(
+  timestamp: string | number | Date,
+  format = 'MMM D, YYYY'
+): string {
   if (!timestamp) return '';
   if (getLocale() === 'zh-CN') format = 'YYYY年MM月DD日';
   else if (getLocale() === 'zh-TW') format = 'YYYY年MM月DD日';

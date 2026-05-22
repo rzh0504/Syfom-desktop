@@ -125,17 +125,19 @@ class YPMTrayLinuxImpl {
   initTemplate(): void {
     //在linux下，鼠标左右键都会呼出contextMenu
     //所以此处单独为linux添加一个 显示主面板 选项
-    this.template = ([
-      {
-        label: '显示主面板',
-        click: () => {
-          this.win.show();
+    this.template = (
+      [
+        {
+          label: '显示主面板',
+          click: () => {
+            this.win.show();
+          },
         },
-      },
-      {
-        type: 'separator',
-      },
-    ] as MenuItemConstructorOptions[]).concat(createMenuTemplate(this.win));
+        {
+          type: 'separator',
+        },
+      ] as MenuItemConstructorOptions[]
+    ).concat(createMenuTemplate(this.win));
   }
 
   handleEvents(): void {
@@ -143,7 +145,9 @@ class YPMTrayLinuxImpl {
       this.win.show();
     });
 
-    this.emitter.on('updateTooltip', title => this.tray.setToolTip(String(title)));
+    this.emitter.on('updateTooltip', title =>
+      this.tray.setToolTip(String(title))
+    );
     this.emitter.on('updatePlayState', isPlaying => {
       this.contextMenu.getMenuItemById('play')!.visible = !isPlaying;
       this.contextMenu.getMenuItemById('pause')!.visible = Boolean(isPlaying);
@@ -234,12 +238,17 @@ class YPMTrayWindowsImpl {
       this.tray.popUpContextMenu(this.contextMenu);
     });
 
-    this.emitter.on('updateTooltip', title => this.tray.setToolTip(String(title)));
+    this.emitter.on('updateTooltip', title =>
+      this.tray.setToolTip(String(title))
+    );
     this.emitter.on(
       'updatePlayState',
       isPlaying => (this.isPlaying = Boolean(isPlaying))
     );
-    this.emitter.on('updateLikeState', isLiked => (this.isLiked = Boolean(isLiked)));
+    this.emitter.on(
+      'updateLikeState',
+      isLiked => (this.isLiked = Boolean(isLiked))
+    );
     this.emitter.on('updateIcon', () => {
       this.updateIcon();
     });

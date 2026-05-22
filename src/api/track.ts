@@ -77,7 +77,9 @@ export function getTrackDetail(ids: string | number) {
         const songs = data.songs || [];
         const privileges = data.privileges || [];
         songs.forEach((song: TrackLike) => {
-          const privilege = privileges.find((t: PrivilegeLike) => t.id === song.id);
+          const privilege = privileges.find(
+            (t: PrivilegeLike) => t.id === song.id
+          );
           cacheTrackDetail(song, privilege);
         });
         return {
@@ -85,7 +87,9 @@ export function getTrackDetail(ids: string | number) {
             .map(id => songs.find((song: TrackLike) => String(song.id) === id))
             .filter(Boolean),
           privileges: idsInArray
-            .map(id => privileges.find((item: PrivilegeLike) => String(item.id) === id))
+            .map(id =>
+              privileges.find((item: PrivilegeLike) => String(item.id) === id)
+            )
             .filter(Boolean),
         };
       });

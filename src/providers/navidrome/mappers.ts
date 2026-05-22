@@ -195,7 +195,9 @@ export function mapPlaylist(raw: NavidromePlaylist = {}) {
   };
 }
 
-export function mapLyrics(raw: { value?: string; lyrics?: string; syncedLyrics?: string } = {}) {
+export function mapLyrics(
+  raw: { value?: string; lyrics?: string; syncedLyrics?: string } = {}
+) {
   const lines = raw.value || raw.lyrics || raw.syncedLyrics || '';
   return {
     lrc: {

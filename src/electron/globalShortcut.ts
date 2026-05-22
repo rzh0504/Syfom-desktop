@@ -13,28 +13,27 @@ type StoreLike = {
 };
 
 function getShortcut(shortcuts: Shortcut[], id: string): Shortcut {
-  return shortcuts.find(s => s.id === id) || defaultShortcuts.find(s => s.id === id)!;
+  return (
+    shortcuts.find(s => s.id === id) || defaultShortcuts.find(s => s.id === id)!
+  );
 }
 
-export function registerGlobalShortcut(win: BrowserWindow, store: StoreLike): void {
+export function registerGlobalShortcut(
+  win: BrowserWindow,
+  store: StoreLike
+): void {
   log('registerGlobalShortcut');
   let shortcuts = store.get('settings.shortcuts');
   if (shortcuts === undefined) {
     shortcuts = defaultShortcuts;
   }
 
-  globalShortcut.register(
-    getShortcut(shortcuts, 'play').globalShortcut,
-    () => {
-      win.webContents.send('play');
-    }
-  );
-  globalShortcut.register(
-    getShortcut(shortcuts, 'next').globalShortcut,
-    () => {
-      win.webContents.send('next');
-    }
-  );
+  globalShortcut.register(getShortcut(shortcuts, 'play').globalShortcut, () => {
+    win.webContents.send('play');
+  });
+  globalShortcut.register(getShortcut(shortcuts, 'next').globalShortcut, () => {
+    win.webContents.send('next');
+  });
   globalShortcut.register(
     getShortcut(shortcuts, 'previous').globalShortcut,
     () => {
@@ -53,12 +52,9 @@ export function registerGlobalShortcut(win: BrowserWindow, store: StoreLike): vo
       win.webContents.send('decreaseVolume');
     }
   );
-  globalShortcut.register(
-    getShortcut(shortcuts, 'like').globalShortcut,
-    () => {
-      win.webContents.send('like');
-    }
-  );
+  globalShortcut.register(getShortcut(shortcuts, 'like').globalShortcut, () => {
+    win.webContents.send('like');
+  });
   globalShortcut.register(
     getShortcut(shortcuts, 'minimize').globalShortcut,
     () => {

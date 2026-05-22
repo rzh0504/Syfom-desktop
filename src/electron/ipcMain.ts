@@ -153,27 +153,33 @@ export function initIpcMain(
     store.set('proxy', '');
   });
 
-  ipcMain.on('switchGlobalShortcutStatusTemporary', (_event, status: string) => {
-    log('switchGlobalShortcutStatusTemporary');
-    if (status === 'disable') {
+  ipcMain.on(
+    'switchGlobalShortcutStatusTemporary',
+    (_event, status: string) => {
+      log('switchGlobalShortcutStatusTemporary');
+      if (status === 'disable') {
+        globalShortcut.unregisterAll();
+      } else {
+        registerGlobalShortcut(win, store);
+      }
+    }
+  );
+
+  ipcMain.on(
+    'updateShortcut',
+    (_event, { id, type, shortcut }: ShortcutUpdate) => {
+      log('updateShortcut');
+      let shortcuts = store.get('settings.shortcuts') as Shortcut[];
+      let newShortcut = shortcuts.find(s => s.id === id);
+      if (!newShortcut) return;
+      newShortcut[type] = shortcut;
+      store.set('settings.shortcuts', shortcuts);
+
+      createMenu(win, store);
       globalShortcut.unregisterAll();
-    } else {
       registerGlobalShortcut(win, store);
     }
-  });
-
-  ipcMain.on('updateShortcut', (_event, { id, type, shortcut }: ShortcutUpdate) => {
-    log('updateShortcut');
-    let shortcuts = store.get('settings.shortcuts') as Shortcut[];
-    let newShortcut = shortcuts.find(s => s.id === id);
-    if (!newShortcut) return;
-    newShortcut[type] = shortcut;
-    store.set('settings.shortcuts', shortcuts);
-
-    createMenu(win, store);
-    globalShortcut.unregisterAll();
-    registerGlobalShortcut(win, store);
-  });
+  );
 
   ipcMain.on('restoreDefaultShortcuts', () => {
     log('restoreDefaultShortcuts');

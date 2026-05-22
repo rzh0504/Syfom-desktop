@@ -34,7 +34,10 @@ export default {
       }, 3200),
     });
   },
-  likeATrack({ state, commit, dispatch }: ActionContextLike, id: string | number) {
+  likeATrack(
+    { state, commit, dispatch }: ActionContextLike,
+    id: string | number
+  ) {
     if (!isAccountLoggedIn()) {
       dispatch('showToast', '请先登录 Navidrome 账号');
       return;

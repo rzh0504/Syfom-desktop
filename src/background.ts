@@ -407,7 +407,11 @@ class Background {
       }
 
       // init ipcMain
-      initIpcMain(this.window, this.store, this.trayEventEmitter || new EventEmitter());
+      initIpcMain(
+        this.window,
+        this.store,
+        this.trayEventEmitter || new EventEmitter()
+      );
 
       // set proxy
       const proxyRules = this.store.get('proxy');

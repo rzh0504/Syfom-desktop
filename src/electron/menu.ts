@@ -12,7 +12,9 @@ type StoreLike = {
 };
 
 function getShortcut(shortcuts: Shortcut[], id: string): Shortcut {
-  return shortcuts.find(s => s.id === id) || defaultShortcuts.find(s => s.id === id)!;
+  return (
+    shortcuts.find(s => s.id === id) || defaultShortcuts.find(s => s.id === id)!
+  );
 }
 
 export function createMenu(win: BrowserWindow, store: StoreLike): void {

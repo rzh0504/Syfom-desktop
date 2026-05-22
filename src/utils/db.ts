@@ -90,7 +90,9 @@ function getTrackCacheKey(
   if (track && typeof track === 'object') {
     return track.uid || track.cacheKey || track.id;
   }
-  return typeof track === 'string' || typeof track === 'number' ? track : undefined;
+  return typeof track === 'string' || typeof track === 'number'
+    ? track
+    : undefined;
 }
 
 async function deleteExcessCache(): Promise<void> {
@@ -200,7 +202,10 @@ export function getTrackDetailFromCache(ids: string[]) {
     })
     .toArray()
     .then(tracks => {
-      const result: { songs: any[]; privileges: any[] } = { songs: [], privileges: [] };
+      const result: { songs: any[]; privileges: any[] } = {
+        songs: [],
+        privileges: [],
+      };
       ids.map(id => {
         const one = tracks.find(t => String(t.id) === id);
         result.songs.push(one?.detail);

@@ -29,7 +29,10 @@ export function mapTrackPlayableStatus<T extends TrackLike>(
   tracks: T[],
   privileges?: TrackLike[]
 ): T[];
-export function mapTrackPlayableStatus<T>(tracks: T, privileges?: TrackLike[]): T;
+export function mapTrackPlayableStatus<T>(
+  tracks: T,
+  privileges?: TrackLike[]
+): T;
 export function mapTrackPlayableStatus(
   tracks: TrackLike[] | unknown,
   privileges: TrackLike[] = []
@@ -76,7 +79,10 @@ export function shuffleAList(list: Required<Pick<TrackLike, 'id' | 'sort'>>[]) {
   return newSorts;
 }
 
-export function throttle<T extends (...args: any[]) => void>(fn: T, time: number) {
+export function throttle<T extends (...args: any[]) => void>(
+  fn: T,
+  time: number
+) {
   let isRun = false;
   return function (this: ThisParameterType<T>, ...args: Parameters<T>) {
     if (isRun) return;

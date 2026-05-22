@@ -118,11 +118,14 @@ export function buildAuthenticatedUrl(
   const url = buildEndpointUrl(endpoint, activeSession);
   const query = new URLSearchParams({
     ...buildAuthParams(activeSession),
-    ...Object.entries(params).reduce<Record<string, string>>((acc, [key, value]) => {
-      if (value === undefined || value === null || value === '') return acc;
-      acc[key] = String(value);
-      return acc;
-    }, {}),
+    ...Object.entries(params).reduce<Record<string, string>>(
+      (acc, [key, value]) => {
+        if (value === undefined || value === null || value === '') return acc;
+        acc[key] = String(value);
+        return acc;
+      },
+      {}
+    ),
   });
   return `${url}?${query.toString()}`;
 }

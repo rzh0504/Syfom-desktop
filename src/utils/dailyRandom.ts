@@ -49,7 +49,10 @@ function canUseLocalStorage(): boolean {
   return typeof localStorage !== 'undefined';
 }
 
-export function readDailyCache<T = unknown>(cacheKey: string, scope = ''): T | null {
+export function readDailyCache<T = unknown>(
+  cacheKey: string,
+  scope = ''
+): T | null {
   if (!canUseLocalStorage()) return null;
 
   try {
@@ -66,7 +69,11 @@ export function readDailyCache<T = unknown>(cacheKey: string, scope = ''): T | n
   }
 }
 
-export function writeDailyCache(cacheKey: string, value: unknown, scope = ''): void {
+export function writeDailyCache(
+  cacheKey: string,
+  value: unknown,
+  scope = ''
+): void {
   if (!canUseLocalStorage()) return;
 
   try {

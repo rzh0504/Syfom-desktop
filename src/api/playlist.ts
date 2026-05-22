@@ -169,7 +169,9 @@ export function createPlaylist(params: CreatePlaylistParams) {
  * @param {string} params.op
  * @param {string} params.pid
  */
-export function addOrRemoveTrackFromPlaylist(params: UpdatePlaylistTracksParams) {
+export function addOrRemoveTrackFromPlaylist(
+  params: UpdatePlaylistTracksParams
+) {
   return getActiveProvider().updatePlaylistTracks(params);
 }
 

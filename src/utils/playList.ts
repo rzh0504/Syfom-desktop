@@ -55,7 +55,9 @@ export async function getRecommendPlayList(
   }
 }
 
-async function replaceRecommendResult(recommend: RecommendPlaylist[]): Promise<void> {
+async function replaceRecommendResult(
+  recommend: RecommendPlaylist[]
+): Promise<void> {
   for (let r of recommend) {
     if (specialPlaylist.indexOf(Number(r.id)) > -1) {
       const data = await getPlaylistDetail(r.id, true);
