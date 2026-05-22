@@ -31,10 +31,6 @@ import '@vscode/codicons/dist/codicon.css';
 
 import { mapState } from 'vuex';
 
-const electron =
-  typeof window.require === 'function' ? window.require('electron') : null;
-const ipcRenderer = electron?.ipcRenderer;
-
 export default {
   name: 'LinuxTitlebar',
   data() {
@@ -46,21 +42,21 @@ export default {
     ...mapState(['title']),
   },
   created() {
-    if (ipcRenderer) {
-      ipcRenderer.on('isMaximized', (_, value) => {
+    if (window.electronAPI) {
+      window.electronAPI.on('isMaximized', value => {
         this.isMaximized = value;
       });
     }
   },
   methods: {
     windowMinimize() {
-      ipcRenderer?.send('minimize');
+      window.electronAPI?.send('minimize');
     },
     windowMaxRestore() {
-      ipcRenderer?.send('maximizeOrUnmaximize');
+      window.electronAPI?.send('maximizeOrUnmaximize');
     },
     windowClose() {
-      ipcRenderer?.send('close');
+      window.electronAPI?.send('close');
     },
   },
 };

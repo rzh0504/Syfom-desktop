@@ -98,6 +98,13 @@ export function initIpcMain(win, store, trayEventEmitter) {
     win.isMaximized() ? win.unmaximize() : win.maximize();
   });
 
+  ipcMain.on('nativeAlert', (event, message) => {
+    dialog.showMessageBox(win, {
+      type: 'warning',
+      message,
+    });
+  });
+
   ipcMain.on('settings', (event, options) => {
     store.set('settings', options);
     if (options.enableGlobalShortcut) {

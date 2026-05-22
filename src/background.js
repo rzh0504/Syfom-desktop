@@ -192,9 +192,10 @@ class Background {
       title: 'YesPlayMusic',
       show: false,
       webPreferences: {
+        preload: path.join(__dirname, '../preload/preload.js'),
         webSecurity: true,
-        nodeIntegration: true,
-        contextIsolation: false,
+        nodeIntegration: false,
+        contextIsolation: true,
       },
       backgroundColor:
         ((appearance === undefined || appearance === 'auto') &&

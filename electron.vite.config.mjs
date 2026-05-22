@@ -25,6 +25,7 @@ function rendererDefines(mode) {
     'process.env.VUE_APP_LASTFM_API_SHARED_SECRET': JSON.stringify(
       env.VUE_APP_LASTFM_API_SHARED_SECRET || ''
     ),
+    'process.platform': JSON.stringify(process.platform),
   };
 }
 

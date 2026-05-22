@@ -102,4 +102,5 @@ Current phase: Phase 5 - manual runtime QA
 - Discord Rich Presence support was removed by request, including renderer settings, Player IPC calls, main-process RPC handlers, locale strings, and `discord-rich-presence` plus its git subdependency chain.
 - Deprecated `vscode-codicons` was replaced with `@vscode/codicons`.
 - Electron renderer windows now use `webSecurity: true`; external Last.fm windows use `nodeIntegration: false` and `contextIsolation: true`. `index.html` now includes a CSP meta tag for the Vite/Electron renderer.
+- Main renderer IPC was migrated behind `src/preload.js` with a restricted `window.electronAPI` bridge. The main BrowserWindow now runs with `nodeIntegration: false` and `contextIsolation: true`.
 - Full GUI/runtime QA is still pending. The current automated checks verify install, lint, typecheck, Vite build, Electron dev startup, and Windows packaging.
