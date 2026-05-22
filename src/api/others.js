@@ -1,4 +1,42 @@
 import { getActiveProvider } from '@/providers';
+import { readDailyCache, writeDailyCache } from '@/utils/dailyRandom';
+
+const HOME_DAILY_CACHE_PREFIX = 'syfom-home-daily';
+
+function readJsonStorage(key) {
+  if (typeof localStorage === 'undefined') return {};
+
+  try {
+    return JSON.parse(localStorage.getItem(key)) || {};
+  } catch (error) {
+    void error;
+    return {};
+  }
+}
+
+function getHomeDailyCacheScope() {
+  const data = readJsonStorage('data');
+  const session = readJsonStorage('navidromeSession');
+  return [
+    data.activeProvider || 'navidrome',
+    session.serverUrl || '',
+    session.username || '',
+    session.token || '',
+  ].join('|');
+}
+
+function requestWithHomeDailyCache(cacheName, loader) {
+  const cacheKey = `${HOME_DAILY_CACHE_PREFIX}:${cacheName}`;
+  const scope = getHomeDailyCacheScope();
+  const cached = readDailyCache(cacheKey, scope);
+
+  if (cached !== null) return Promise.resolve(cached);
+
+  return loader().then(value => {
+    writeDailyCache(cacheKey, value, scope);
+    return value;
+  });
+}
 
 /**
  * 搜索
@@ -32,8 +70,11 @@ export function fmTrash() {
  * @param {number=} limit
  */
 export function homeRecommendTracks(limit = 24) {
-  return getActiveProvider()
-    .getRandomSongs(limit)
+  const safeLimit = Math.max(1, Number(limit) || 24);
+
+  return requestWithHomeDailyCache(`recommend-tracks:${safeLimit}`, () =>
+    getActiveProvider().getRandomSongs(safeLimit)
+  )
     .then(songs => ({ songs }))
     .catch(() => ({ songs: [] }));
 }
@@ -47,11 +88,26 @@ export function homeRecommendTracks(limit = 24) {
  */
 export function homeAlbumsByType(params = {}) {
   const { type = 'random', limit = 24, offset = 0 } = params;
-  return getActiveProvider()
-    .getAlbumListByType({ type, size: limit, offset })
+  const safeLimit = Math.max(1, Number(limit) || 24);
+  const safeOffset = Math.max(0, Number(offset) || 0);
+  const loader = () =>
+    getActiveProvider().getAlbumListByType({
+      type,
+      size: safeLimit,
+      offset: safeOffset,
+    });
+  const request =
+    type === 'random'
+      ? requestWithHomeDailyCache(
+          `random-albums:${safeLimit}:${safeOffset}`,
+          loader
+        )
+      : loader();
+
+  return request
     .then(albums => ({
       albums,
-      hasMore: albums.length >= limit,
+      hasMore: albums.length >= safeLimit,
     }))
     .catch(() => ({ albums: [], hasMore: false }));
 }

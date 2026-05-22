@@ -102,7 +102,7 @@ export default {
       default: 'tracklist',
     }, // tracklist | album | playlist | cloudDisk
     id: {
-      type: Number,
+      type: [Number, String],
       default: 0,
     },
     dbclickTrackFunc: {
@@ -157,7 +157,9 @@ export default {
   computed: {
     ...mapState(['liked', 'player']),
     isRightClickedTrackLiked() {
-      return this.liked.songs.includes(this.rightClickedTrack?.id);
+      return this.liked.songs.some(
+        id => String(id) === String(this.rightClickedTrack?.id)
+      );
     },
     rightClickedTrackComputed() {
       return this.type === 'cloudDisk'

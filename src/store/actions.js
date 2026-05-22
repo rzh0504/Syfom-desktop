@@ -33,25 +33,30 @@ export default {
       dispatch('showToast', '请先登录 Navidrome 账号');
       return;
     }
-    let like = true;
-    if (state.liked.songs.includes(id)) like = false;
+    const isLiked = state.liked.songs.some(
+      songId => String(songId) === String(id)
+    );
+    const like = !isLiked;
 
-    likeATrack({ id, like })
+    return likeATrack({ id, like })
       .then(() => {
         if (like === false) {
           commit('updateLikedXXX', {
             name: 'songs',
-            data: state.liked.songs.filter(d => d !== id),
+            data: state.liked.songs.filter(d => String(d) !== String(id)),
           });
         } else {
-          let newLikeSongs = state.liked.songs;
-          newLikeSongs.push(id);
           commit('updateLikedXXX', {
             name: 'songs',
-            data: newLikeSongs,
+            data: [
+              ...state.liked.songs.filter(d => String(d) !== String(id)),
+              id,
+            ],
           });
         }
-        dispatch('fetchLikedSongsWithDetails');
+        return dispatch('fetchLikedSongsWithDetails').then(() =>
+          dispatch('fetchLikedPlaylist')
+        );
       })
       .catch(() => {
         dispatch('showToast', '操作失败，请稍后重试');
@@ -96,8 +101,9 @@ export default {
     });
   },
   fetchLikedPlaylist: ({ state, commit }) => {
+    const likedSongPlaylistID = 'starred';
     const starredPlaylist = {
-      id: 'starred',
+      id: likedSongPlaylistID,
       name: '我喜欢的音乐',
       coverImgUrl: state.data.user?.avatarUrl || '/img/logos/yesplaymusic.png',
       creator: {
@@ -120,7 +126,7 @@ export default {
       });
       commit('updateData', {
         key: 'likedSongPlaylistID',
-        value: 'starred',
+        value: likedSongPlaylistID,
       });
       return;
     }
@@ -139,7 +145,7 @@ export default {
           // 更新用户”喜欢的歌曲“歌单ID
           commit('updateData', {
             key: 'likedSongPlaylistID',
-            value: 'starred',
+            value: likedSongPlaylistID,
           });
         }
       });

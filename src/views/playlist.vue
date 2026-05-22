@@ -355,7 +355,7 @@ export default {
     };
   },
   computed: {
-    ...mapState(['player', 'data']),
+    ...mapState(['player', 'data', 'liked']),
     isLikeSongsPage() {
       return this.$route.name === 'likedSongs';
     },
@@ -391,7 +391,7 @@ export default {
   },
   created() {
     if (this.$route.name === 'likedSongs') {
-      this.loadData(this.data.likedSongPlaylistID);
+      this.loadLikedSongsData();
     } else {
       this.loadData(this.$route.params.id);
     }
@@ -431,6 +431,50 @@ export default {
           this.playlist = data.playlist;
         });
       });
+    },
+    buildLikedSongsPlaylist() {
+      return {
+        id: this.data.likedSongPlaylistID || 'starred',
+        name: '我喜欢的音乐',
+        coverImgUrl: this.data.user?.avatarUrl || '/img/logos/yesplaymusic.png',
+        creator: {
+          userId: this.data.user?.userId || 'local',
+          nickname: this.data.user?.nickname || 'Me',
+        },
+        trackCount: this.liked.songs.length,
+        trackIds: this.liked.songs.map(id => ({ id })),
+        tracks: [...this.liked.songsWithDetails],
+        subscribed: true,
+        privacy: 0,
+        updateTime: Date.now(),
+        description: '',
+      };
+    },
+    loadLikedSongsData(next = undefined) {
+      this.id = this.data.likedSongPlaylistID || 'starred';
+      this.$store
+        .dispatch('fetchLikedSongs')
+        .then(() => this.$store.dispatch('fetchLikedSongsWithDetails'))
+        .then(() => this.$store.dispatch('fetchLikedPlaylist'))
+        .then(() => {
+          this.playlist = this.buildLikedSongsPlaylist();
+          this.tracks = [...this.playlist.tracks];
+          NProgress.done();
+          if (next !== undefined) next();
+          this.show = true;
+          this.lastLoadedTrackIndex = this.tracks.length - 1;
+          if (this.playlist.trackCount > this.tracks.length) {
+            this.loadingMore = true;
+            this.loadMore();
+          } else {
+            this.hasMore = false;
+          }
+        })
+        .catch(error => {
+          this.showToast(`读取喜欢歌曲失败：${error.message || error}`);
+          NProgress.done();
+          this.show = true;
+        });
     },
     loadData(id, next = undefined) {
       this.id = id;

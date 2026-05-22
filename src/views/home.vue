@@ -100,9 +100,9 @@
 
 <script>
 import NProgress from 'nprogress';
-import shuffle from 'lodash/shuffle';
 import { mapState } from 'vuex';
 import { isLooseLoggedIn as checkLooseLoggedIn } from '@/utils/auth';
+import { dailyShuffle } from '@/utils/dailyRandom';
 import {
   homeAlbumsByType,
   homeAllArtists,
@@ -186,7 +186,10 @@ export default {
           }
         ),
         homeAllArtists().then(({ artists }) => {
-          this.randomArtists = shuffle(artists || []).slice(0, 12);
+          this.randomArtists = dailyShuffle(
+            artists || [],
+            'home-random-artists'
+          ).slice(0, 12);
         }),
       ]).finally(() => {
         NProgress.done();

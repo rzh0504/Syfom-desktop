@@ -30,10 +30,10 @@
 
 <script>
 import NProgress from 'nprogress';
-import shuffle from 'lodash/shuffle';
 import { homeAlbumsByType, homeAllArtists } from '@/api/others';
 import CoverRow from '@/components/CoverRow.vue';
 import SvgIcon from '@/components/SvgIcon.vue';
+import { dailyShuffle } from '@/utils/dailyRandom';
 
 const CATALOG_MAP = {
   'newest-albums': {
@@ -166,7 +166,10 @@ export default {
       const loadArtists =
         this.allArtists.length === 0
           ? homeAllArtists().then(({ artists = [] }) => {
-              this.allArtists = shuffle(artists);
+              this.allArtists = dailyShuffle(
+                artists,
+                'home-catalog-random-artists'
+              );
             })
           : Promise.resolve();
 

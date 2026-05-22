@@ -169,7 +169,9 @@ export default {
       return this.type === 'playlist';
     },
     isLiked() {
-      return this.$parent.liked.songs.includes(this.track?.id);
+      return this.$parent.liked.songs.some(
+        id => String(id) === String(this.track?.id)
+      );
     },
     isPlaying() {
       return this.$store.state.player.currentTrack.id === this.track?.id;

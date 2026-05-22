@@ -304,20 +304,23 @@ export default {
     ...mapActions(['showToast']),
     ...mapMutations(['updateModal', 'updateData']),
     loadData() {
+      const loadLikedSongs = this.$store
+        .dispatch('fetchLikedSongs')
+        .then(() => this.$store.dispatch('fetchLikedSongsWithDetails'))
+        .then(() => this.$store.dispatch('fetchLikedPlaylist'));
+
       if (this.liked.songsWithDetails.length > 0) {
         NProgress.done();
         this.show = true;
-        this.$store.dispatch('fetchLikedSongsWithDetails');
+        loadLikedSongs.then(() => this.getRandomLyric());
         this.getRandomLyric();
       } else {
-        this.$store.dispatch('fetchLikedSongsWithDetails').then(() => {
+        loadLikedSongs.then(() => {
           NProgress.done();
           this.show = true;
           this.getRandomLyric();
         });
       }
-      this.$store.dispatch('fetchLikedSongs');
-      this.$store.dispatch('fetchLikedPlaylist');
       this.$store.dispatch('fetchLikedAlbums');
       this.$store.dispatch('fetchLikedArtists');
       this.$store.dispatch('fetchPlayHistory');

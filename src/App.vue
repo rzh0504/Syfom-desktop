@@ -84,9 +84,10 @@ export default {
     },
     fetchData() {
       if (!isLooseLoggedIn()) return;
-      this.$store.dispatch('fetchLikedSongs');
-      this.$store.dispatch('fetchLikedSongsWithDetails');
-      this.$store.dispatch('fetchLikedPlaylist');
+      this.$store
+        .dispatch('fetchLikedSongs')
+        .then(() => this.$store.dispatch('fetchLikedSongsWithDetails'))
+        .then(() => this.$store.dispatch('fetchLikedPlaylist'));
       if (isAccountLoggedIn()) {
         this.$store.dispatch('fetchLikedAlbums');
         this.$store.dispatch('fetchLikedArtists');
