@@ -1,11 +1,12 @@
-import Vue from 'vue';
-import VueGtag from 'vue-gtag';
+import { createApp } from 'vue';
+import { createGtag } from 'vue-gtag';
 import App from './App.vue';
 import router from './router';
 import store from './store';
 import i18n from '@/locale';
-import '@/assets/icons';
-import '@/utils/filters';
+import svgIcons from '@/assets/icons';
+import filters from '@/utils/filters';
+import clipboard from '@/plugins/clipboard';
 import './registerServiceWorker';
 import { dailyTask } from '@/utils/common';
 import '@/assets/css/global.scss';
@@ -28,21 +29,20 @@ console.log(
   'background:unset;color:unset;'
 );
 
-Vue.use(
-  VueGtag,
-  {
-    config: { id: 'G-KMJJCFZDKF' },
-  },
-  router
-);
-Vue.config.productionTip = false;
-
 NProgress.configure({ showSpinner: false, trickleSpeed: 100 });
 dailyTask();
 
-new Vue({
-  i18n,
-  store,
-  router,
-  render: h => h(App),
-}).$mount('#app');
+createApp(App)
+  .use(store)
+  .use(router)
+  .use(i18n)
+  .use(svgIcons)
+  .use(filters)
+  .use(clipboard)
+  .use(
+    createGtag({
+      tagId: 'G-KMJJCFZDKF',
+      pageTracker: { router },
+    })
+  )
+  .mount('#app');

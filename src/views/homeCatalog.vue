@@ -81,6 +81,7 @@ const CATALOG_MAP = {
 export default {
   name: 'HomeCatalog',
   components: { CoverRow, SvgIcon },
+  inject: ['restoreMainScrollPosition'],
   data() {
     return {
       show: false,
@@ -109,7 +110,7 @@ export default {
   },
   activated() {
     this.loadCatalog(true);
-    this.$parent.$refs.scrollbar.restorePosition();
+    this.restoreMainScrollPosition();
   },
   methods: {
     loadCatalog(reset = true) {

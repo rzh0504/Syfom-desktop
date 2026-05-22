@@ -1,15 +1,12 @@
-/* global __static */
-import path from 'path';
 import { app, nativeImage, Tray, Menu, nativeTheme } from 'electron';
 import { isLinux } from '@/utils/platform';
+import { getStaticPath } from './staticPath';
 
 function createMenuTemplate(win) {
   return [
     {
       label: '播放',
-      icon: nativeImage.createFromPath(
-        path.join(__static, 'img/icons/play.png')
-      ),
+      icon: nativeImage.createFromPath(getStaticPath('img/icons/play.png')),
       click: () => {
         win.webContents.send('play');
       },
@@ -17,9 +14,7 @@ function createMenuTemplate(win) {
     },
     {
       label: '暂停',
-      icon: nativeImage.createFromPath(
-        path.join(__static, 'img/icons/pause.png')
-      ),
+      icon: nativeImage.createFromPath(getStaticPath('img/icons/pause.png')),
       click: () => {
         win.webContents.send('play');
       },
@@ -28,9 +23,7 @@ function createMenuTemplate(win) {
     },
     {
       label: '上一首',
-      icon: nativeImage.createFromPath(
-        path.join(__static, 'img/icons/left.png')
-      ),
+      icon: nativeImage.createFromPath(getStaticPath('img/icons/left.png')),
       accelerator: 'CmdOrCtrl+Left',
       click: () => {
         win.webContents.send('previous');
@@ -38,9 +31,7 @@ function createMenuTemplate(win) {
     },
     {
       label: '下一首',
-      icon: nativeImage.createFromPath(
-        path.join(__static, 'img/icons/right.png')
-      ),
+      icon: nativeImage.createFromPath(getStaticPath('img/icons/right.png')),
       accelerator: 'CmdOrCtrl+Right',
       click: () => {
         win.webContents.send('next');
@@ -48,9 +39,7 @@ function createMenuTemplate(win) {
     },
     {
       label: '循环播放',
-      icon: nativeImage.createFromPath(
-        path.join(__static, 'img/icons/repeat.png')
-      ),
+      icon: nativeImage.createFromPath(getStaticPath('img/icons/repeat.png')),
       accelerator: 'Alt+R',
       click: () => {
         win.webContents.send('repeat');
@@ -58,9 +47,7 @@ function createMenuTemplate(win) {
     },
     {
       label: '加入喜欢',
-      icon: nativeImage.createFromPath(
-        path.join(__static, 'img/icons/like.png')
-      ),
+      icon: nativeImage.createFromPath(getStaticPath('img/icons/like.png')),
       accelerator: 'CmdOrCtrl+L',
       click: () => {
         win.webContents.send('like');
@@ -69,9 +56,7 @@ function createMenuTemplate(win) {
     },
     {
       label: '取消喜欢',
-      icon: nativeImage.createFromPath(
-        path.join(__static, 'img/icons/unlike.png')
-      ),
+      icon: nativeImage.createFromPath(getStaticPath('img/icons/unlike.png')),
       accelerator: 'CmdOrCtrl+L',
       click: () => {
         win.webContents.send('like');
@@ -81,9 +66,7 @@ function createMenuTemplate(win) {
     },
     {
       label: '退出',
-      icon: nativeImage.createFromPath(
-        path.join(__static, 'img/icons/exit.png')
-      ),
+      icon: nativeImage.createFromPath(getStaticPath('img/icons/exit.png')),
       accelerator: 'CmdOrCtrl+W',
       click: () => {
         app.exit();
@@ -162,7 +145,7 @@ class YPMTrayLinuxImpl {
     }
 
     let icon = nativeImage
-      .createFromPath(path.join(__static, `img/icons/menu-${iconTheme}@88.png`))
+      .createFromPath(getStaticPath(`img/icons/menu-${iconTheme}@88.png`))
       .resize({
         height: 20,
         width: 20,
@@ -232,7 +215,7 @@ class YPMTrayWindowsImpl {
     }
 
     let icon = nativeImage
-      .createFromPath(path.join(__static, `img/icons/menu-${iconTheme}@88.png`))
+      .createFromPath(getStaticPath(`img/icons/menu-${iconTheme}@88.png`))
       .resize({
         height: 20,
         width: 20,
@@ -252,7 +235,7 @@ export function createTray(win, eventEmitter, store) {
   }
 
   let icon = nativeImage
-    .createFromPath(path.join(__static, `img/icons/menu-${iconTheme}@88.png`))
+    .createFromPath(getStaticPath(`img/icons/menu-${iconTheme}@88.png`))
     .resize({
       height: 20,
       width: 20,

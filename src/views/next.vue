@@ -39,6 +39,7 @@ export default {
   components: {
     TrackList,
   },
+  inject: ['restoreMainScrollPosition'],
   data() {
     return {
       tracks: [],
@@ -83,7 +84,7 @@ export default {
   },
   activated() {
     this.loadTracks();
-    this.$parent.$refs.scrollbar.restorePosition();
+    this.restoreMainScrollPosition();
   },
   methods: {
     ...mapActions(['playTrackOnListByID']),

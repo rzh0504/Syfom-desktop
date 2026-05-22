@@ -1,6 +1,7 @@
-const { TouchBar, nativeImage, ipcMain } = require('electron');
+import { TouchBar, nativeImage, ipcMain } from 'electron';
+import { getStaticPath } from './staticPath';
+
 const { TouchBarButton, TouchBarSpacer } = TouchBar;
-const path = require('path');
 
 export function createTouchBar(window) {
   const renderer = window.webContents;
@@ -9,10 +10,7 @@ export function createTouchBar(window) {
   // See: https://developer.apple.com/design/human-interface-guidelines/macos/touch-bar/touch-bar-icons-and-images/
   // Icon Resource: https://devimages-cdn.apple.com/design/resources/
   function getNativeIcon(name) {
-    return nativeImage.createFromPath(
-      // eslint-disable-next-line no-undef
-      path.join(__static, 'img/touchbar/', name)
-    );
+    return nativeImage.createFromPath(getStaticPath('img/touchbar', name));
   }
 
   const previousPage = new TouchBarButton({

@@ -7,10 +7,11 @@
       :style="{ overflow: enableScrolling ? 'auto' : 'hidden' }"
       @scroll="handleScroll"
     >
-      <keep-alive>
-        <router-view v-if="$route.meta.keepAlive"></router-view>
-      </keep-alive>
-      <router-view v-if="!$route.meta.keepAlive"></router-view>
+      <router-view v-slot="{ Component, route }">
+        <keep-alive :include="keepAliveRouteNames">
+          <component :is="Component" :key="route.fullPath" />
+        </keep-alive>
+      </router-view>
     </main>
     <transition name="slide-up">
       <Player v-if="enablePlayer" v-show="showPlayer" ref="player" />
@@ -47,10 +48,24 @@ export default {
     Lyrics,
     Scrollbar,
   },
+  provide() {
+    return {
+      restoreMainScrollPosition: () => this.$refs.scrollbar?.restorePosition(),
+      scrollMainTo: (...args) => this.$refs.main?.scrollTo(...args),
+    };
+  },
   data() {
     return {
       isElectron: process.env.IS_ELECTRON, // true || undefined
       userSelectNone: false,
+      keepAliveRouteNames: [
+        'Home',
+        'Artist',
+        'Next',
+        'Search',
+        'Library',
+        'HomeCatalog',
+      ],
     };
   },
   computed: {

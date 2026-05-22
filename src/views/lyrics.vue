@@ -51,7 +51,7 @@
                   <router-link
                     v-if="hasList()"
                     :to="`${getListPath()}`"
-                    @click.native="toggleLyrics"
+                    @click="toggleLyrics"
                     >{{ currentTrack.name }}
                   </router-link>
                   <span v-else>
@@ -62,7 +62,7 @@
                   <router-link
                     v-if="artist.id !== 0"
                     :to="`/artist/${artist.id}`"
-                    @click.native="toggleLyrics"
+                    @click="toggleLyrics"
                     >{{ artist.name }}
                   </router-link>
                   <span v-else>
@@ -73,7 +73,7 @@
                     <router-link
                       :to="`/album/${album.id}`"
                       :title="album.name"
-                      @click.native="toggleLyrics"
+                      @click="toggleLyrics"
                       >{{ album.name }}
                     </router-link>
                   </span>
@@ -81,7 +81,7 @@
               </div>
               <div class="top-right">
                 <div class="volume-control">
-                  <button-icon :title="$t('player.mute')" @click.native="mute">
+                  <button-icon :title="$t('player.mute')" @click="mute">
                     <svg-icon v-show="volume > 0.5" icon-class="volume" />
                     <svg-icon v-show="volume === 0" icon-class="volume-mute" />
                     <svg-icon
@@ -105,7 +105,7 @@
                 <div class="buttons">
                   <button-icon
                     :title="$t('player.like')"
-                    @click.native="likeATrack(player.currentTrack.id)"
+                    @click="likeATrack(player.currentTrack.id)"
                   >
                     <svg-icon
                       :icon-class="
@@ -115,21 +115,21 @@
                   </button-icon>
                   <button-icon
                     :title="$t('contextMenu.addToPlaylist')"
-                    @click.native="addToPlaylist"
+                    @click="addToPlaylist"
                   >
                     <svg-icon icon-class="plus" />
                   </button-icon>
-                  <!-- <button-icon @click.native="openMenu" title="Menu"
+                  <!-- <button-icon @click="openMenu" title="Menu"
                     ><svg-icon icon-class="more"
                   /></button-icon> -->
                 </div>
               </div>
             </div>
             <div class="progress-bar">
-              <span>{{ formatTrackTime(player.progress) || '0:00' }}</span>
+              <span>{{ formatTrackTime(progress) || '0:00' }}</span>
               <div class="slider">
                 <vue-slider
-                  v-model="player.progress"
+                  v-model="progress"
                   :min="0"
                   :max="player.currentTrackDuration"
                   :interval="1"
@@ -153,7 +153,7 @@
                     : $t('player.repeat')
                 "
                 :class="{ active: player.repeatMode !== 'off' }"
-                @click.native="switchRepeatMode"
+                @click="switchRepeatMode"
               >
                 <svg-icon
                   v-show="player.repeatMode !== 'one'"
@@ -168,28 +168,25 @@
                 <button-icon
                   v-show="!player.isPersonalFM"
                   :title="$t('player.previous')"
-                  @click.native="playPrevTrack"
+                  @click="playPrevTrack"
                 >
                   <svg-icon icon-class="previous" />
                 </button-icon>
                 <button-icon
                   v-show="player.isPersonalFM"
                   title="不喜欢"
-                  @click.native="moveToFMTrash"
+                  @click="moveToFMTrash"
                 >
                   <svg-icon icon-class="thumbs-down" />
                 </button-icon>
                 <button-icon
                   id="play"
                   :title="$t(player.playing ? 'player.pause' : 'player.play')"
-                  @click.native="playOrPause"
+                  @click="playOrPause"
                 >
                   <svg-icon :icon-class="player.playing ? 'pause' : 'play'" />
                 </button-icon>
-                <button-icon
-                  :title="$t('player.next')"
-                  @click.native="playNextTrack"
-                >
+                <button-icon :title="$t('player.next')" @click="playNextTrack">
                   <svg-icon icon-class="next" />
                 </button-icon>
               </div>
@@ -197,7 +194,7 @@
                 v-show="!player.isPersonalFM"
                 :title="$t('player.shuffle')"
                 :class="{ active: player.shuffle }"
-                @click.native="switchShuffle"
+                @click="switchShuffle"
               >
                 <svg-icon icon-class="shuffle" />
               </button-icon>
@@ -208,7 +205,7 @@
                   lyricType === 'translation'
                 "
                 :title="$t('player.translationLyric')"
-                @click.native="switchLyricType"
+                @click="switchLyricType"
               >
                 <span class="lyric-switch-icon">译</span>
               </button-icon>
@@ -219,7 +216,7 @@
                   lyricType === 'romaPronunciation'
                 "
                 :title="$t('player.PronunciationLyric')"
-                @click.native="switchLyricType"
+                @click="switchLyricType"
               >
                 <span class="lyric-switch-icon">音</span>
               </button-icon>
@@ -336,6 +333,8 @@ export default {
       date: this.formatTime(new Date()),
       isFullscreen: !!document.fullscreenElement,
       rightClickLyric: null,
+      progressValue: 0,
+      progressInterval: null,
     };
   },
   computed: {
@@ -349,6 +348,15 @@ export default {
       },
       set(value) {
         this.player.volume = value;
+      },
+    },
+    progress: {
+      get() {
+        return this.progressValue;
+      },
+      set(value) {
+        this.progressValue = value;
+        this.player.progress = value;
       },
     },
     imageUrl() {
@@ -466,6 +474,8 @@ export default {
     this.getLyric();
     this.getCoverColor();
     this.initDate();
+    this.syncProgress();
+    this.progressInterval = setInterval(this.syncProgress, 500);
     document.addEventListener('keydown', e => {
       if (e.key === 'F11') {
         e.preventDefault();
@@ -476,17 +486,21 @@ export default {
       this.isFullscreen = !!document.fullscreenElement;
     });
   },
-  beforeDestroy: function () {
+  beforeUnmount: function () {
     if (this.timer) {
       clearInterval(this.timer);
     }
+    clearInterval(this.progressInterval);
   },
-  destroyed() {
+  unmounted() {
     clearInterval(this.lyricsInterval);
   },
   methods: {
     ...mapMutations(['toggleLyrics', 'updateModal']),
     ...mapActions(['likeATrack']),
+    syncProgress() {
+      this.progressValue = this.player.seek(null, false) ?? 0;
+    },
     initDate() {
       var _this = this;
       clearInterval(this.timer);

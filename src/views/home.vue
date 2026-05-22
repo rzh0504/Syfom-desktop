@@ -120,6 +120,7 @@ function appendSizeParam(imageUrl = '', size = 1024) {
 export default {
   name: 'Home',
   components: { CoverRow, SvgIcon },
+  inject: ['restoreMainScrollPosition'],
   data() {
     return {
       show: false,
@@ -147,7 +148,7 @@ export default {
   },
   activated() {
     this.loadData();
-    this.$parent.$refs.scrollbar.restorePosition();
+    this.restoreMainScrollPosition();
   },
   methods: {
     loadData() {

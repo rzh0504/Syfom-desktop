@@ -1,7 +1,7 @@
 <template>
   <div class="linux-titlebar">
     <div class="logo">
-      <img src="img/logos/yesplaymusic-white24x24.png" />
+      <img src="/img/logos/yesplaymusic-white24x24.png" />
     </div>
     <div class="title">{{ title }}</div>
     <div class="controls">
@@ -32,9 +32,8 @@ import 'vscode-codicons/dist/codicon.css';
 import { mapState } from 'vuex';
 
 const electron =
-  process.env.IS_ELECTRON === true ? window.require('electron') : null;
-const ipcRenderer =
-  process.env.IS_ELECTRON === true ? electron.ipcRenderer : null;
+  typeof window.require === 'function' ? window.require('electron') : null;
+const ipcRenderer = electron?.ipcRenderer;
 
 export default {
   name: 'LinuxTitlebar',
@@ -47,7 +46,7 @@ export default {
     ...mapState(['title']),
   },
   created() {
-    if (process.env.IS_ELECTRON === true) {
+    if (ipcRenderer) {
       ipcRenderer.on('isMaximized', (_, value) => {
         this.isMaximized = value;
       });
@@ -55,13 +54,13 @@ export default {
   },
   methods: {
     windowMinimize() {
-      ipcRenderer.send('minimize');
+      ipcRenderer?.send('minimize');
     },
     windowMaxRestore() {
-      ipcRenderer.send('maximizeOrUnmaximize');
+      ipcRenderer?.send('maximizeOrUnmaximize');
     },
     windowClose() {
-      ipcRenderer.send('close');
+      ipcRenderer?.send('close');
     },
   },
 };

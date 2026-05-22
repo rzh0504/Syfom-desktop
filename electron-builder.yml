@@ -1,0 +1,67 @@
+appId: com.syfom.desktop
+productName: SyfomDesktop
+copyright: Copyright © Syfom Desktop
+asar: true
+files:
+  - out/**/*
+directories:
+  output: dist_electron
+publish:
+  - provider: github
+    owner: qier222
+    repo: YesPlayMusic
+    vPrefixedTagName: true
+    releaseType: draft
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+        - universal
+  artifactName: ${productName}-${os}-${version}-${arch}.${ext}
+  category: public.app-category.music
+  darkModeSupport: true
+win:
+  target:
+    - target: portable
+      arch:
+        - x64
+    - target: nsis
+      arch:
+        - x64
+  publisherName: Syfom Desktop
+  icon: build/icons/icon.ico
+  publish:
+    - github
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: tar.gz
+      arch:
+        - x64
+        - arm64
+    - target: deb
+      arch:
+        - x64
+        - armv7l
+        - arm64
+    - target: rpm
+      arch:
+        - x64
+    - target: snap
+      arch:
+        - x64
+    - target: pacman
+      arch:
+        - x64
+  category: Music
+  icon: build/icons/icon.icns
+dmg:
+  icon: build/icons/icon.icns
+nsis:
+  oneClick: true
+  perMachine: true
+  deleteAppDataOnUninstall: true

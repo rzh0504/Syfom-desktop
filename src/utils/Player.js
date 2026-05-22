@@ -220,6 +220,7 @@ export default class {
     return this._progress;
   }
   set progress(value) {
+    this._progress = value;
     if (this._howler) {
       this._howler.seek(value);
       if (isCreateMpris) {
@@ -259,10 +260,14 @@ export default class {
     // 这个定时器会覆盖之前改变的值，是bug
     setInterval(() => {
       if (this._howler === null) return;
-      this._progress = this._howler.seek();
-      localStorage.setItem('playerCurrentTrackTime', this._progress);
+      const progress = this._howler.seek();
+      this._progress = progress;
+      if (store.state.player && store.state.player !== this) {
+        store.state.player._progress = progress;
+      }
+      localStorage.setItem('playerCurrentTrackTime', progress);
       if (isCreateMpris) {
-        ipcRenderer?.send('playerCurrentTrackTime', this._progress);
+        ipcRenderer?.send('playerCurrentTrackTime', progress);
       }
     }, 1000);
   }

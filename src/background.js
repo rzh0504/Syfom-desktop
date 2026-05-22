@@ -1,4 +1,5 @@
 'use strict';
+import path from 'path';
 import {
   app,
   protocol,
@@ -17,7 +18,6 @@ import {
   isCreateTray,
   isCreateMpris,
 } from '@/utils/platform';
-import { createProtocol } from 'vue-cli-plugin-electron-builder/lib';
 import { initIpcMain } from './electron/ipcMain.js';
 import { createMenu } from './electron/menu';
 import { createTray } from '@/electron/tray';
@@ -25,7 +25,9 @@ import { createTouchBar } from './electron/touchBar';
 import { createDockMenu } from './electron/dockMenu';
 import { registerGlobalShortcut } from './electron/globalShortcut';
 import { autoUpdater } from 'electron-updater';
-import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer';
+import devtoolsInstaller, {
+  VUEJS3_DEVTOOLS,
+} from 'electron-devtools-installer';
 import { EventEmitter } from 'events';
 import express from 'express';
 import Store from 'electron-store';
@@ -125,7 +127,11 @@ class Background {
   async initDevtools() {
     // Install Vue Devtools extension
     try {
-      await installExtension(VUEJS_DEVTOOLS);
+      const installExtension =
+        typeof devtoolsInstaller === 'function'
+          ? devtoolsInstaller
+          : devtoolsInstaller.default;
+      await installExtension(VUEJS3_DEVTOOLS);
     } catch (e) {
       console.error('Vue Devtools failed to install:', e.toString());
     }
@@ -148,7 +154,10 @@ class Background {
     log('creating express app');
 
     const expressApp = express();
-    expressApp.use('/', express.static(__dirname + '/'));
+    const rendererRoot = process.env.ELECTRON_RENDERER_URL
+      ? path.join(__dirname, '../../public')
+      : path.join(__dirname, '../renderer');
+    expressApp.use('/', express.static(rendererRoot));
     expressApp.use('/player', (req, res) => {
       this.window.webContents
         .executeJavaScript('window.yesplaymusic.player')
@@ -240,16 +249,15 @@ class Background {
     // hide menu bar on Microsoft Windows and Linux
     this.window.setMenuBarVisibility(false);
 
-    if (process.env.WEBPACK_DEV_SERVER_URL) {
+    const devServerURL = process.env.ELECTRON_RENDERER_URL;
+
+    if (devServerURL) {
       // Load the url of the dev server if in development mode
       this.window.loadURL(
-        showLibraryDefault
-          ? `${process.env.WEBPACK_DEV_SERVER_URL}/#/library`
-          : process.env.WEBPACK_DEV_SERVER_URL
+        showLibraryDefault ? `${devServerURL}/#/library` : devServerURL
       );
       if (!process.env.IS_TEST) this.window.webContents.openDevTools();
     } else {
-      createProtocol('app');
       this.window.loadURL(
         showLibraryDefault
           ? `http://localhost:${INTERNAL_SERVER_PORT}/#/library`

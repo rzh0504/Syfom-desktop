@@ -3,7 +3,7 @@
     <h1>
       <img
         class="avatar"
-        :src="data.user.avatarUrl | resizeImage"
+        :src="$filters.resizeImage(data.user.avatarUrl)"
         loading="lazy"
       />{{ data.user.nickname }}{{ $t('library.sLibrary') }}
     </h1>
@@ -220,6 +220,7 @@ function extractLyricPart(rawLyric) {
 export default {
   name: 'Library',
   components: { SvgIcon, CoverRow, TrackList, ContextMenu },
+  inject: ['restoreMainScrollPosition', 'scrollMainTo'],
   data() {
     return {
       show: false,
@@ -296,7 +297,7 @@ export default {
     this.loadData();
   },
   activated() {
-    this.$parent.$refs.scrollbar.restorePosition();
+    this.restoreMainScrollPosition();
     this.loadData();
     dailyTask();
   },
@@ -383,7 +384,7 @@ export default {
       if (tab === 'librarySongs' && this.librarySongs.length === 0) {
         this.loadLibrarySongs(true);
       }
-      this.$parent.$refs.main.scrollTo({ top: 375, behavior: 'smooth' });
+      this.scrollMainTo({ top: 375, behavior: 'smooth' });
     },
     goToLikedSongsList() {
       this.$router.push({ path: '/library/liked-songs' });

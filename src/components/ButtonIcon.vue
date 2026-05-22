@@ -13,6 +13,7 @@ button {
   display: flex;
   justify-content: center;
   align-items: center;
+  color: var(--color-text);
   padding: 8px;
   background: transparent;
   margin: 4px;

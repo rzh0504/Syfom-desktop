@@ -100,7 +100,7 @@ export default {
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 0 6px rgba(255, 255, 255, 0.08);
   }
-  .menu .item:hover {
+  .menu :deep(.item:hover) {
     color: var(--color-text);
   }
 }
@@ -111,7 +111,7 @@ export default {
   }
 }
 
-.menu .item {
+.menu :deep(.item) {
   font-weight: 600;
   font-size: 14px;
   padding: 10px 14px;
@@ -137,7 +137,7 @@ export default {
   }
 }
 
-hr {
+.menu :deep(hr) {
   margin: 4px 10px;
   background: rgba(128, 128, 128, 0.18);
   height: 1px;
@@ -145,7 +145,7 @@ hr {
   border: none;
 }
 
-.item-info {
+.menu :deep(.item-info) {
   padding: 10px 10px;
   display: flex;
   align-items: center;

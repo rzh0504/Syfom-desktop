@@ -1,6 +1,4 @@
-import Vue from 'vue';
-import VueClipboard from 'vue-clipboard2';
-import VueI18n from 'vue-i18n';
+import { createI18n } from 'vue-i18n';
 import store from '@/store';
 
 import en from './lang/en.js';
@@ -8,10 +6,9 @@ import zhCN from './lang/zh-CN.js';
 import zhTW from './lang/zh-TW.js';
 import tr from './lang/tr.js';
 
-Vue.use(VueClipboard);
-Vue.use(VueI18n);
-
-const i18n = new VueI18n({
+const i18n = createI18n({
+  legacy: true,
+  globalInjection: true,
   locale: store.state.settings.lang,
   messages: {
     en,
@@ -19,7 +16,18 @@ const i18n = new VueI18n({
     'zh-TW': zhTW,
     tr,
   },
-  silentTranslationWarn: true,
+  missingWarn: false,
+  fallbackWarn: false,
+});
+
+i18n.t = (...args) => i18n.global.t(...args);
+Object.defineProperty(i18n, 'locale', {
+  get() {
+    return i18n.global.locale;
+  },
+  set(value) {
+    i18n.global.locale = value;
+  },
 });
 
 export default i18n;
