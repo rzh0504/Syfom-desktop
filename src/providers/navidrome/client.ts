@@ -226,7 +226,7 @@ function getConfiguredMaxBitRate(): number | undefined {
     const bitRate = Number(quality || 320000);
     if (!Number.isFinite(bitRate) || bitRate <= 0) return undefined;
     return Math.round(bitRate / 1000);
-  } catch (error) {
+  } catch (_error) {
     return undefined;
   }
 }

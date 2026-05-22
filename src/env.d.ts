@@ -17,7 +17,7 @@ declare global {
         callback: (...args: any[]) => void
       ) => (() => void) | undefined;
     };
-    require?: NodeRequire;
+    require?: NodeJS.Require;
     resetApp?: () => string;
     yesplaymusic?: any;
   }

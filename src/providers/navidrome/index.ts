@@ -316,7 +316,7 @@ export async function getLibrarySongs({
       songs: rawSongs.map(mapSong),
       hasMore: rawSongs.length >= safeLimit,
     };
-  } catch (error) {
+  } catch (_error) {
     try {
       const response = await requestSubsonic('search3', {
         query: '',
@@ -330,7 +330,7 @@ export async function getLibrarySongs({
         songs: rawSongs.map(mapSong),
         hasMore: rawSongs.length >= safeLimit,
       };
-    } catch (fallbackError) {
+    } catch (_fallbackError) {
       const response = await requestSubsonic('getRandomSongs', {
         size: safeLimit,
       });
@@ -432,7 +432,7 @@ export async function getLyrics(id: Id) {
         .join('\n');
       return mapLyrics({ value: lyric });
     }
-  } catch (error) {
+  } catch (_error) {
     // fallback below
   }
 

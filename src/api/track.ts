@@ -5,14 +5,10 @@ import {
   cacheLyric,
   getLyricFromCache,
 } from '@/utils/db';
-
-type TrackLike = {
-  id: string | number;
-  streamUrl?: string;
-};
+import type { Track, TrackId } from '@/types/music';
 
 type PrivilegeLike = {
-  id: string | number;
+  id: TrackId;
 };
 
 type LibrarySongsParams = {
@@ -21,13 +17,13 @@ type LibrarySongsParams = {
 };
 
 type LikeTrackParams = {
-  id: string | number;
+  id: TrackId;
   like?: boolean;
 };
 
 type ScrobbleParams = {
-  id: string | number;
-  sourceid?: string | number;
+  id: TrackId;
+  sourceid?: TrackId;
   time?: number;
   submission?: boolean;
 };
@@ -38,11 +34,11 @@ type ScrobbleParams = {
  * !!!未登录状态返回试听片段(返回字段包含被截取的正常歌曲的开始时间和结束时间)
  * @param {string} id - 音乐的 id，例如 id=405998841,33894312
  */
-export function getMP3(id: string | number) {
+export function getMP3(id: TrackId) {
   return getActiveProvider()
     .getSongDetails(id)
     .then(result => {
-      const song = result.songs[0] as TrackLike | undefined;
+      const song = result.songs[0] as Track | undefined;
       return {
         data: [
           {
@@ -62,7 +58,7 @@ export function getMP3(id: string | number) {
  * 说明 : 调用此接口 , 传入音乐 id(支持多个 id, 用 , 隔开), 可获得歌曲详情(注意:歌曲封面现在需要通过专辑内容接口获取)
  * @param {string} ids - 音乐 id, 例如 ids=405998841,33894312
  */
-export function getTrackDetail(ids: string | number) {
+export function getTrackDetail(ids: TrackId) {
   const idsInArray = String(ids)
     .split(',')
     .map(id => id.trim())
@@ -77,7 +73,7 @@ export function getTrackDetail(ids: string | number) {
       .then(data => {
         const songs = data.songs || [];
         const privileges = data.privileges || [];
-        songs.forEach((song: TrackLike) => {
+        songs.forEach((song: Track) => {
           const privilege = privileges.find(
             (t: PrivilegeLike) => t.id === song.id
           );
@@ -85,7 +81,7 @@ export function getTrackDetail(ids: string | number) {
         });
         return {
           songs: idsInArray
-            .map(id => songs.find((song: TrackLike) => String(song.id) === id))
+            .map(id => songs.find((song: Track) => String(song.id) === id))
             .filter(Boolean),
           privileges: idsInArray
             .map(id =>
@@ -107,7 +103,7 @@ export function getTrackDetail(ids: string | number) {
  * 说明 : 调用此接口 , 传入音乐 id 可获得对应音乐的歌词 ( 不需要登录 )
  * @param {number} id - 音乐 id
  */
-export function getLyric(id: string | number) {
+export function getLyric(id: TrackId) {
   const fetchLatest = () => {
     return getActiveProvider()
       .getLyrics(id)

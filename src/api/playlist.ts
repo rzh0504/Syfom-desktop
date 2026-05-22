@@ -1,18 +1,8 @@
 import { getActiveProvider } from '@/providers';
+import type { PlaylistDetail, TrackId } from '@/types/music';
 
 type PlaylistParams = {
   limit?: number;
-};
-
-type PlaylistTrack = {
-  id: string | number;
-};
-
-type PlaylistDetail = {
-  name?: string;
-  coverImgUrl?: string;
-  tracks: PlaylistTrack[];
-  trackIds: PlaylistTrack[];
 };
 
 type CreatePlaylistParams = {
@@ -21,8 +11,8 @@ type CreatePlaylistParams = {
 
 type UpdatePlaylistTracksParams = {
   op: string;
-  pid: string | number;
-  tracks: string | number;
+  pid: TrackId;
+  tracks: TrackId;
 };
 
 /**
@@ -59,7 +49,7 @@ export function dailyRecommendPlaylist(_params?: PlaylistParams) {
  * @param {number} id
  * @param {boolean=} noCache
  */
-export function getPlaylistDetail(id: string | number, _noCache?: boolean) {
+export function getPlaylistDetail(id: TrackId, _noCache?: boolean) {
   return getActiveProvider()
     .getPlaylistDetail(id)
     .then((playlist: PlaylistDetail) => ({
@@ -142,7 +132,7 @@ export function subscribePlaylist() {
  * - id : 歌单id,可多个,用逗号隔开
  *  * @param {number} id
  */
-export function deletePlaylist(id: string | number) {
+export function deletePlaylist(id: TrackId) {
   return getActiveProvider().deletePlaylist(id);
 }
 
@@ -203,9 +193,9 @@ export function dailyRecommendTracks() {
  * @param {number=} params.pid
  */
 export function intelligencePlaylist(_params?: {
-  id?: string | number;
-  pid?: string | number;
-  sid?: string | number;
+  id?: TrackId;
+  pid?: TrackId;
+  sid?: TrackId;
 }) {
   return Promise.resolve({ data: [] });
 }

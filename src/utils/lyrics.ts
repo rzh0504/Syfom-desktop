@@ -99,7 +99,7 @@ export async function copyLyric(lyric: string): Promise<void> {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     try {
       await navigator.clipboard.writeText(textToCopy);
-    } catch (err) {
+    } catch (_err) {
       alert('复制失败，请手动复制！');
     }
   } else {
@@ -111,7 +111,7 @@ export async function copyLyric(lyric: string): Promise<void> {
     tempInput.select();
     try {
       document.execCommand('copy');
-    } catch (err) {
+    } catch (_err) {
       alert('复制失败，请手动复制！');
     }
     document.body.removeChild(tempInput);

@@ -8,7 +8,7 @@
   "scripts": {
     "serve": "vite --host 0.0.0.0",
     "build": "electron-vite build",
-    "lint": "eslint \"src/**/*.{js,vue}\"",
+    "lint": "eslint \"src/**/*.{ts,vue}\"",
     "typecheck": "vue-tsc --noEmit",
     "electron:build": "electron-vite build && electron-builder -p never",
     "electron:build-all": "electron-vite build && electron-builder -p never -mwl",
@@ -28,8 +28,8 @@
     "node": ">=20.19.0"
   },
   "dependencies": {
-    "axios": "^0.26.1",
     "@vscode/codicons": "^0.0.39",
+    "axios": "^0.26.1",
     "change-case": "^4.1.2",
     "cli-color": "^2.0.0",
     "color": "^4.2.3",
@@ -65,6 +65,8 @@
     "@babel/eslint-parser": "^7.28.6",
     "@swc/core": "^1.15.33",
     "@types/node": "^22.19.19",
+    "@typescript-eslint/eslint-plugin": "^8.59.4",
+    "@typescript-eslint/parser": "^8.59.4",
     "@vitejs/plugin-vue": "^6.0.7",
     "@vue/compiler-sfc": "^3.5.34",
     "electron": "^42.2.0",
@@ -96,17 +98,41 @@
     "extends": [
       "plugin:vue/essential",
       "plugin:vue/recommended",
+      "plugin:@typescript-eslint/recommended",
       "plugin:prettier/recommended",
       "eslint:recommended"
     ],
+    "parser": "vue-eslint-parser",
     "parserOptions": {
-      "parser": "@babel/eslint-parser",
-      "requireConfigFile": false
+      "parser": "@typescript-eslint/parser",
+      "requireConfigFile": false,
+      "extraFileExtensions": [".vue"]
     },
+    "plugins": ["@typescript-eslint"],
     "globals": {
       "ipcRenderer": "off"
     },
     "rules": {
+      "@typescript-eslint/no-empty-object-type": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-redeclare": "off",
+      "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/no-this-alias": "off",
+      "@typescript-eslint/no-unused-expressions": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_"
+        }
+      ],
+      "no-undef": "off",
+      "no-extra-boolean-cast": "off",
+      "no-redeclare": "off",
+      "no-unused-expressions": "off",
+      "no-unused-vars": "off",
+      "prefer-const": "off",
       "vue/multi-word-component-names": "off"
     }
   },

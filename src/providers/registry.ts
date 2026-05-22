@@ -18,7 +18,7 @@ let activeProviderKey = readActiveProviderKey();
 function readData(): ProviderData {
   try {
     return JSON.parse(localStorage.getItem('data')) || {};
-  } catch (error) {
+  } catch (_error) {
     return {};
   }
 }

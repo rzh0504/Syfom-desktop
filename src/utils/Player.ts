@@ -8,22 +8,10 @@ import { cacheTrackSource, getTrackSource } from '@/utils/db';
 import { isCreateTray } from '@/utils/platform';
 import { Howl, Howler } from 'howler';
 import shuffle from 'lodash/shuffle';
+import type { Track, TrackId } from '@/types/music';
 
-type TrackId = string | number;
 type RepeatMode = 'off' | 'on' | 'one';
 type PlaylistSource = { type: string; id: TrackId };
-type TrackLike = {
-  id: TrackId;
-  uid?: TrackId;
-  source?: string;
-  name?: string;
-  dt?: number;
-  ar?: { name?: string }[];
-  artists?: { name?: string }[];
-  al?: { name?: string; picUrl?: string };
-  album?: { name?: string; picUrl?: string };
-  [key: string]: any;
-};
 
 const PLAY_PAUSE_FADE_DURATION = 200;
 
@@ -38,15 +26,16 @@ const UNPLAYABLE_CONDITION = {
   PLAY_PREV_TRACK: 'playPrevTrack',
 };
 
-const electronAPI =
-  Boolean(process.env.IS_ELECTRON) ? window.electronAPI : null;
+const electronAPI = Boolean(process.env.IS_ELECTRON)
+  ? window.electronAPI
+  : null;
 const excludeSaveKeys = [
   '_playing',
   '_personalFMLoading',
   '_personalFMNextLoading',
 ];
 
-function setTitle(track: TrackLike | null): void {
+function setTitle(track: Track | null): void {
   document.title = track
     ? `${track.name} · ${track.ar?.[0]?.name || ''} - YesPlayMusic`
     : 'YesPlayMusic';
@@ -62,7 +51,7 @@ function setTrayLikeState(isLiked: boolean): void {
   }
 }
 
-function recordLocalPlayHistory(track: TrackLike): void {
+function recordLocalPlayHistory(track: Track): void {
   if (!track?.id) return;
   const history = store.state.data.localPlayHistory || [];
   const entry = {
@@ -81,7 +70,7 @@ function recordLocalPlayHistory(track: TrackLike): void {
   });
 }
 
-function artworkFor(track: TrackLike, size: number): string {
+function artworkFor(track: Track, size: number): string {
   const src = track.al?.picUrl || '';
   if (!src) return '';
   if (src.startsWith('data:') || src.startsWith('http://127.0.0.1:')) {
@@ -108,11 +97,11 @@ export default class Player {
   _shuffledList: TrackId[];
   _shuffledCurrent: number;
   _playlistSource: PlaylistSource;
-  _currentTrack: TrackLike;
+  _currentTrack: Track;
   _playNextList: TrackId[];
   _isPersonalFM: boolean;
-  _personalFMTrack: TrackLike;
-  _personalFMNextTrack: TrackLike;
+  _personalFMTrack: Track;
+  _personalFMNextTrack: Track;
   createdBlobRecords: string[];
   _howler: Howl | null;
 
@@ -447,7 +436,7 @@ export default class Player {
       return Promise.resolve(null);
     }
   }
-  async _getAudioSourceFromUnblockMusic(_track?: TrackLike) {
+  async _getAudioSourceFromUnblockMusic(_track?: Track) {
     return null;
   }
   _getAudioSource(track) {
