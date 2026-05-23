@@ -205,7 +205,9 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
+import type { NavigationGuardNext } from 'vue-router';
 import { mapMutations, mapActions, mapState } from 'vuex';
 import NProgress from 'nprogress';
 import {
@@ -223,8 +225,39 @@ import ContextMenu from '@/components/ContextMenu.vue';
 import TrackList from '@/components/TrackList.vue';
 import Cover from '@/components/Cover.vue';
 import Modal from '@/components/Modal.vue';
+import type { Track, TrackId } from '@/types/music';
 
-const specialPlaylist = {
+type PlaylistTrack = Track & {
+  songId?: TrackId;
+  al?: { name?: string; picUrl?: string; id?: TrackId };
+  ar?: Array<{ id?: TrackId; name?: string }>;
+};
+
+type PlaylistLike = {
+  id: TrackId;
+  name?: string;
+  coverImgUrl?: string;
+  creator: { userId?: TrackId; nickname?: string };
+  trackIds: Array<{ id: TrackId }>;
+  tracks?: PlaylistTrack[];
+  trackCount?: number;
+  subscribed?: boolean;
+  privacy?: number;
+  updateTime?: number;
+  description?: string;
+};
+
+type ContextMenuInstance = {
+  openMenu: (e: MouseEvent) => void;
+};
+
+type LocaleWithT = typeof locale & {
+  t: (key: string) => string;
+};
+
+const i18n = locale as LocaleWithT;
+
+const specialPlaylist: Record<string | number, { name: string; gradient: string }> = {
   2829816518: {
     name: '欧美私人订制',
     gradient: 'gradient-pink-purple-blue',
@@ -315,7 +348,7 @@ const specialPlaylist = {
   },
 };
 
-export default {
+export default defineComponent({
   name: 'Playlist',
   components: {
     Cover,
@@ -333,6 +366,7 @@ export default {
   },
   data() {
     return {
+      id: 0 as TrackId,
       show: false,
       playlist: {
         id: 0,
@@ -341,9 +375,9 @@ export default {
           userId: '',
         },
         trackIds: [],
-      },
+      } as PlaylistLike,
       showFullDescription: false,
-      tracks: [],
+      tracks: [] as PlaylistTrack[],
       loadingMore: false,
       hasMore: false,
       lastLoadedTrackIndex: 9,
@@ -351,36 +385,36 @@ export default {
       searchKeyWords: '', // 搜索使用的关键字
       inputSearchKeyWords: '', // 搜索框中正在输入的关键字
       inputFocus: false,
-      debounceTimeout: null,
+      debounceTimeout: null as ReturnType<typeof setTimeout> | null,
       searchInputWidth: '0px', // 搜索框宽度
     };
   },
   computed: {
     ...mapState(['player', 'data', 'liked']),
-    isLikeSongsPage() {
+    isLikeSongsPage(): boolean {
       return this.$route.name === 'likedSongs';
     },
     specialPlaylistInfo() {
       return specialPlaylist[this.playlist.id];
     },
-    isUserOwnPlaylist() {
+    isUserOwnPlaylist(): boolean {
       return (
         this.playlist.creator.userId === this.data.user.userId &&
         this.playlist.id !== this.data.likedSongPlaylistID
       );
     },
-    filteredTracks() {
+    filteredTracks(): PlaylistTrack[] {
       return this.tracks.filter(
         track =>
           (track.name &&
             track.name
               .toLowerCase()
               .includes(this.searchKeyWords.toLowerCase())) ||
-          (track.al.name &&
+          (track.al?.name &&
             track.al.name
               .toLowerCase()
               .includes(this.searchKeyWords.toLowerCase())) ||
-          track.ar.find(
+          track.ar?.find(
             artist =>
               artist.name &&
               artist.name
@@ -394,7 +428,7 @@ export default {
     if (this.$route.name === 'likedSongs') {
       this.loadLikedSongsData();
     } else {
-      this.loadData(this.$route.params.id);
+      this.loadData(this.$route.params.id as TrackId);
     }
     setTimeout(() => {
       if (!this.show) NProgress.start();
@@ -403,8 +437,8 @@ export default {
   methods: {
     ...mapMutations(['appendTrackToPlayerList']),
     ...mapActions(['playFirstTrackOnList', 'playTrackOnListByID', 'showToast']),
-    playPlaylistByID(trackID = 'first') {
-      let trackIDs = this.playlist.trackIds.map(t => t.id);
+    playPlaylistByID(trackID: TrackId | 'first' = 'first') {
+      const trackIDs = this.playlist.trackIds.map(t => t.id);
       this.$store.state.player.replacePlaylist(
         trackIDs,
         this.playlist.id,
@@ -414,13 +448,13 @@ export default {
     },
     likePlaylist(toast = false) {
       if (!isAccountLoggedIn()) {
-        this.showToast(locale.t('toast.needToLogin'));
+        this.showToast(i18n.t('toast.needToLogin'));
         return;
       }
-      subscribePlaylist({
+      (subscribePlaylist as any)({
         id: this.playlist.id,
         t: this.playlist.subscribed ? 2 : 1,
-      }).then(data => {
+      }).then((data: { code: number }) => {
         if (data.code === 200) {
           this.playlist.subscribed = !this.playlist.subscribed;
           if (toast === true)
@@ -429,11 +463,11 @@ export default {
             );
         }
         getPlaylistDetail(this.id, true).then(data => {
-          this.playlist = data.playlist;
+          this.playlist = data.playlist as PlaylistLike;
         });
       });
     },
-    buildLikedSongsPlaylist() {
+    buildLikedSongsPlaylist(): PlaylistLike {
       return {
         id: this.data.likedSongPlaylistID || 'starred',
         name: '我喜欢的音乐',
@@ -444,14 +478,14 @@ export default {
         },
         trackCount: this.liked.songs.length,
         trackIds: this.liked.songs.map(id => ({ id })),
-        tracks: [...this.liked.songsWithDetails],
+        tracks: [...this.liked.songsWithDetails] as PlaylistTrack[],
         subscribed: true,
         privacy: 0,
         updateTime: Date.now(),
         description: '',
       };
     },
-    loadLikedSongsData(next = undefined) {
+    loadLikedSongsData(next?: NavigationGuardNext) {
       this.id = this.data.likedSongPlaylistID || 'starred';
       this.$store
         .dispatch('fetchLikedSongs')
@@ -459,7 +493,7 @@ export default {
         .then(() => this.$store.dispatch('fetchLikedPlaylist'))
         .then(() => {
           this.playlist = this.buildLikedSongsPlaylist();
-          this.tracks = [...this.playlist.tracks];
+          this.tracks = [...(this.playlist.tracks || [])];
           NProgress.done();
           if (next !== undefined) next();
           this.show = true;
@@ -471,18 +505,18 @@ export default {
             this.hasMore = false;
           }
         })
-        .catch(error => {
+        .catch((error: Error) => {
           this.showToast(`读取喜欢歌曲失败：${error.message || error}`);
           NProgress.done();
           this.show = true;
         });
     },
-    loadData(id, next = undefined) {
+    loadData(id: TrackId, next?: NavigationGuardNext) {
       this.id = id;
       getPlaylistDetail(this.id, true)
         .then(data => {
-          this.playlist = data.playlist;
-          this.tracks = data.playlist.tracks;
+          this.playlist = data.playlist as PlaylistLike;
+          this.tracks = data.playlist.tracks as PlaylistTrack[];
           NProgress.done();
           if (next !== undefined) next();
           this.show = true;
@@ -497,17 +531,19 @@ export default {
         });
     },
     loadMore(loadNum = 100) {
-      let trackIDs = this.playlist.trackIds.filter((t, index) => {
+      const trackIDs = this.playlist.trackIds
+        .filter((_t, index) => {
         if (
           index > this.lastLoadedTrackIndex &&
           index <= this.lastLoadedTrackIndex + loadNum
         ) {
-          return t;
+          return true;
         }
-      });
-      trackIDs = trackIDs.map(t => t.id);
+        return false;
+      })
+        .map(t => t.id);
       getTrackDetail(trackIDs.join(',')).then(data => {
-        this.tracks.push(...data.songs);
+        this.tracks.push(...(data.songs as PlaylistTrack[]));
         this.lastLoadedTrackIndex += trackIDs.length;
         this.loadingMore = false;
         if (this.lastLoadedTrackIndex + 1 === this.playlist.trackIds.length) {
@@ -517,12 +553,12 @@ export default {
         }
       });
     },
-    openMenu(e) {
-      this.$refs.playlistMenu.openMenu(e);
+    openMenu(e: MouseEvent) {
+      (this.$refs.playlistMenu as ContextMenuInstance | undefined)?.openMenu(e);
     },
     deletePlaylist() {
       if (!isAccountLoggedIn()) {
-        this.showToast(locale.t('toast.needToLogin'));
+        this.showToast(i18n.t('toast.needToLogin'));
         return;
       }
       let confirmation = confirm(`确定要删除歌单 ${this.playlist.name}？`);
@@ -551,9 +587,9 @@ export default {
         this.loadMore(500);
       }
     },
-    removeTrack(trackID) {
+    removeTrack(trackID: TrackId) {
       if (!isAccountLoggedIn()) {
-        this.showToast(locale.t('toast.needToLogin'));
+        this.showToast(i18n.t('toast.needToLogin'));
         return;
       }
       this.tracks = this.tracks.filter(t => t.id !== trackID);
@@ -573,7 +609,7 @@ export default {
       }
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

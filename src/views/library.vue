@@ -194,7 +194,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapActions, mapMutations, mapState } from 'vuex';
 import { randomNum, dailyTask } from '@/utils/common';
 import { isAccountLoggedIn } from '@/utils/auth';
@@ -206,6 +207,27 @@ import ContextMenu from '@/components/ContextMenu.vue';
 import TrackList from '@/components/TrackList.vue';
 import CoverRow from '@/components/CoverRow.vue';
 import SvgIcon from '@/components/SvgIcon.vue';
+import type { Track, TrackId } from '@/types/music';
+
+type PlaylistFilter = 'all' | 'mine' | 'liked';
+type LibraryTab = 'playlists' | 'librarySongs' | 'albums' | 'artists' | 'playHistory';
+type PlayHistoryMode = 'week' | 'all';
+
+type PlaylistLike = {
+  id?: TrackId;
+  creator?: { userId?: TrackId; nickname?: string };
+  [key: string]: any;
+};
+
+type ContextMenuInstance = {
+  openMenu: (e: MouseEvent) => void;
+};
+
+type LocaleWithT = typeof locale & {
+  t: (key: string) => string;
+};
+
+const i18n = locale as LocaleWithT;
 
 /**
  * Pick the lyric part from a string formed in `[timecode] lyric`.
@@ -213,22 +235,22 @@ import SvgIcon from '@/components/SvgIcon.vue';
  * @param {string} rawLyric The raw lyric string formed in `[timecode] lyric`
  * @returns {string} The lyric part
  */
-function extractLyricPart(rawLyric) {
-  return rawLyric.split(']').pop().trim();
+function extractLyricPart(rawLyric: string): string {
+  return rawLyric.split(']').pop()?.trim() || '';
 }
 
-export default {
+export default defineComponent({
   name: 'Library',
   components: { SvgIcon, CoverRow, TrackList, ContextMenu },
   inject: ['restoreMainScrollPosition', 'scrollMainTo'],
   data() {
     return {
       show: false,
-      likedSongs: [],
-      lyric: undefined,
-      currentTab: 'librarySongs',
-      playHistoryMode: 'week',
-      librarySongs: [],
+      likedSongs: [] as Track[],
+      lyric: undefined as string | undefined,
+      currentTab: 'librarySongs' as LibraryTab,
+      playHistoryMode: 'week' as PlayHistoryMode,
+      librarySongs: [] as Track[],
       librarySongsLoading: false,
       librarySongsHasMore: true,
       librarySongsOffset: 0,
@@ -239,8 +261,7 @@ export default {
     /**
      * @returns {string[]}
      */
-    pickedLyric() {
-      /** @type {string?} */
+    pickedLyric(): string[] {
       const lyric = this.lyric;
 
       // Returns [] if we got no lyrics.
@@ -248,7 +269,7 @@ export default {
 
       const lyricLine = lyric
         .split('\n')
-        .filter(line => !line.includes('作词') && !line.includes('作曲'));
+        .filter((line: string) => !line.includes('作词') && !line.includes('作曲'));
 
       // Pick 3 or fewer lyrics based on the lyric lines.
       const lyricsToPick = Math.min(lyricLine.length, 3);
@@ -262,20 +283,20 @@ export default {
         .slice(startLyricLineIndex, startLyricLineIndex + lyricsToPick)
         .map(extractLyricPart);
     },
-    playlistFilter() {
+    playlistFilter(): PlaylistFilter {
       return this.data.libraryPlaylistFilter || 'all';
     },
-    filterPlaylists() {
-      const playlists = this.liked.playlists.slice(1);
+    filterPlaylists(): PlaylistLike[] {
+      const playlists = this.liked.playlists.slice(1) as PlaylistLike[];
       const userId = this.data.user.userId;
       if (this.playlistFilter === 'mine') {
-        return playlists.filter(p => p.creator.userId === userId);
+        return playlists.filter(p => p.creator?.userId === userId);
       } else if (this.playlistFilter === 'liked') {
-        return playlists.filter(p => p.creator.userId !== userId);
+        return playlists.filter(p => p.creator?.userId !== userId);
       }
       return playlists;
     },
-    playHistoryList() {
+    playHistoryList(): Track[] {
       if (this.show && this.playHistoryMode === 'week') {
         return this.liked.playHistory.weekData;
       }
@@ -343,7 +364,7 @@ export default {
 
       this.librarySongsLoading = true;
       return getLibrarySongs({ offset: nextOffset, limit: pageSize })
-        .then(({ songs = [], hasMore = false }) => {
+        .then(({ songs = [], hasMore = false }: { songs?: Track[]; hasMore?: boolean }) => {
           const existingIds = new Set(this.librarySongs.map(song => song.id));
           const merged = reset ? [] : [...this.librarySongs];
           songs.forEach(song => {
@@ -357,7 +378,7 @@ export default {
           this.librarySongsOffset = merged.length;
           this.librarySongsHasMore = Boolean(hasMore);
         })
-        .catch(error => {
+        .catch((error: Error) => {
           this.showToast(`读取歌曲失败：${error.message || error}`);
           this.librarySongsHasMore = false;
         })
@@ -372,12 +393,12 @@ export default {
         true
       );
     },
-    updateCurrentTab(tab) {
+    updateCurrentTab(tab: LibraryTab) {
       if (
         !isAccountLoggedIn() &&
         !['playlists', 'librarySongs'].includes(tab)
       ) {
-        this.showToast(locale.t('toast.needToLogin'));
+        this.showToast(i18n.t('toast.needToLogin'));
         return;
       }
       this.currentTab = tab;
@@ -397,7 +418,7 @@ export default {
         if (data.lrc !== undefined) {
           const isInstrumental = data.lrc.lyric
             .split('\n')
-            .filter(l => l.includes('纯音乐，请欣赏'));
+            .filter((l: string) => l.includes('纯音乐，请欣赏'));
           if (isInstrumental.length === 0) {
             this.lyric = data.lrc.lyric;
           }
@@ -406,7 +427,7 @@ export default {
     },
     openAddPlaylistModal() {
       if (!isAccountLoggedIn()) {
-        this.showToast(locale.t('toast.needToLogin'));
+        this.showToast(i18n.t('toast.needToLogin'));
         return;
       }
       this.updateModal({
@@ -415,18 +436,18 @@ export default {
         value: true,
       });
     },
-    openPlaylistTabMenu(e) {
-      this.$refs.playlistTabMenu.openMenu(e);
+    openPlaylistTabMenu(e: MouseEvent) {
+      (this.$refs.playlistTabMenu as ContextMenuInstance | undefined)?.openMenu(e);
     },
-    openPlayModeTabMenu(e) {
-      this.$refs.playModeTabMenu.openMenu(e);
+    openPlayModeTabMenu(e: MouseEvent) {
+      (this.$refs.playModeTabMenu as ContextMenuInstance | undefined)?.openMenu(e);
     },
-    changePlaylistFilter(type) {
+    changePlaylistFilter(type: PlaylistFilter) {
       this.updateData({ key: 'libraryPlaylistFilter', value: type });
       window.scrollTo({ top: 375, behavior: 'smooth' });
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

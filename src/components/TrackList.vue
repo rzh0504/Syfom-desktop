@@ -63,9 +63,9 @@
     <div :style="listStyles">
       <TrackListItem
         v-for="(track, index) in tracks"
-        :key="itemKey === 'id' ? track.id : `${track.id}${index}`"
+        :key="itemKey === 'id' ? track.id : `${String(track.id)}${index}`"
         :track-prop="track"
-        :track-no="index + 1"
+        :track-no="Number(index) + 1"
         :highlight-playing-track="highlightPlayingTrack"
         @dblclick="playThisList(track.id || track.songId)"
         @click.right="openMenu($event, track, index)"
@@ -74,7 +74,9 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapActions, mapMutations, mapState } from 'vuex';
 import { addOrRemoveTrackFromPlaylist } from '@/api/playlist';
 import { cloudDiskTrackDelete } from '@/api/user';
@@ -83,8 +85,41 @@ import { isAccountLoggedIn } from '@/utils/auth';
 import TrackListItem from '@/components/TrackListItem.vue';
 import ContextMenu from '@/components/ContextMenu.vue';
 import locale from '@/locale';
+import type { TrackId } from '@/types/music';
 
-export default {
+type TrackListTrack = {
+  id?: TrackId;
+  songId?: TrackId;
+  name?: string;
+  songName?: string;
+  streamUrl?: string;
+  ar?: Array<{ name?: string }>;
+  al?: { picUrl?: string };
+  [key: string]: any;
+};
+
+type ContextMenuInstance = {
+  openMenu: (e: MouseEvent) => void;
+};
+
+type TrackListParent = {
+  removeTrack?: (trackId: TrackId | undefined) => void;
+};
+
+type LocaleWithT = typeof locale & {
+  t: (key: string) => string;
+};
+
+const emptyTrack: TrackListTrack = {
+  id: 0,
+  name: '',
+  ar: [{ name: '' }],
+  al: { picUrl: '' },
+};
+
+const i18n = locale as LocaleWithT;
+
+export default defineComponent({
   name: 'TrackList',
   components: {
     TrackListItem,
@@ -92,7 +127,7 @@ export default {
   },
   props: {
     tracks: {
-      type: Array,
+      type: Array as PropType<TrackListTrack[]>,
       default: () => {
         return [];
       },
@@ -102,7 +137,7 @@ export default {
       default: 'tracklist',
     }, // tracklist | album | playlist | cloudDisk
     id: {
-      type: [Number, String],
+      type: [Number, String] as PropType<TrackId>,
       default: 0,
     },
     dbclickTrackFunc: {
@@ -120,7 +155,7 @@ export default {
       },
     },
     extraContextMenuItem: {
-      type: Array,
+      type: Array as PropType<string[]>,
       default: () => {
         return [
           // 'removeTrackFromPlaylist'
@@ -145,13 +180,10 @@ export default {
   data() {
     return {
       rightClickedTrack: {
-        id: 0,
-        name: '',
-        ar: [{ name: '' }],
-        al: { picUrl: '' },
-      },
+        ...emptyTrack,
+      } as TrackListTrack,
       rightClickedTrackIndex: -1,
-      listStyles: {},
+      listStyles: {} as Record<string, string>,
     };
   },
   computed: {
@@ -163,12 +195,7 @@ export default {
     },
     rightClickedTrackComputed() {
       return this.type === 'cloudDisk'
-        ? {
-            id: 0,
-            name: '',
-            ar: [{ name: '' }],
-            al: { picUrl: '' },
-          }
+        ? emptyTrack
         : this.rightClickedTrack;
     },
   },
@@ -184,21 +211,16 @@ export default {
   methods: {
     ...mapMutations(['updateModal']),
     ...mapActions(['nextTrack', 'showToast', 'likeATrack']),
-    openMenu(e, track, index = -1) {
+    openMenu(e: MouseEvent, track: TrackListTrack, index = -1) {
       this.rightClickedTrack = track;
       this.rightClickedTrackIndex = index;
-      this.$refs.menu.openMenu(e);
+      (this.$refs.menu as ContextMenuInstance | undefined)?.openMenu(e);
     },
     closeMenu() {
-      this.rightClickedTrack = {
-        id: 0,
-        name: '',
-        ar: [{ name: '' }],
-        al: { picUrl: '' },
-      };
+      this.rightClickedTrack = { ...emptyTrack };
       this.rightClickedTrackIndex = -1;
     },
-    playThisList(trackID) {
+    playThisList(trackID: TrackId | undefined) {
       if (this.dbclickTrackFunc === 'default') {
         this.playThisListDefault(trackID);
       } else if (this.dbclickTrackFunc === 'none') {
@@ -208,23 +230,23 @@ export default {
       } else if (this.dbclickTrackFunc === 'playPlaylistByID') {
         this.player.playPlaylistByID(this.id, trackID);
       } else if (this.dbclickTrackFunc === 'playAList') {
-        let trackIDs = this.tracks.map(t => t.id || t.songId);
+        const trackIDs = this.tracks.map(t => t.id || t.songId);
         this.player.replacePlaylist(trackIDs, this.id, 'artist', trackID);
       } else if (this.dbclickTrackFunc === 'dailyTracks') {
-        let trackIDs = this.tracks.map(t => t.id);
+        const trackIDs = this.tracks.map(t => t.id);
         this.player.replacePlaylist(trackIDs, '/daily/songs', 'url', trackID);
       } else if (this.dbclickTrackFunc === 'playCloudDisk') {
-        let trackIDs = this.tracks.map(t => t.id || t.songId);
+        const trackIDs = this.tracks.map(t => t.id || t.songId);
         this.player.replacePlaylist(trackIDs, this.id, 'cloudDisk', trackID);
       }
     },
-    playThisListDefault(trackID) {
+    playThisListDefault(trackID: TrackId | undefined) {
       if (this.type === 'playlist') {
         this.player.playPlaylistByID(this.id, trackID);
       } else if (this.type === 'album') {
         this.player.playAlbumByID(this.id, trackID);
       } else if (this.type === 'tracklist') {
-        let trackIDs = this.tracks.map(t => t.id);
+        const trackIDs = this.tracks.map(t => t.id);
         this.player.replacePlaylist(trackIDs, this.id, 'artist', trackID);
       }
     },
@@ -239,7 +261,7 @@ export default {
     },
     addTrackToPlaylist() {
       if (!isAccountLoggedIn()) {
-        this.showToast(locale.t('toast.needToLogin'));
+        this.showToast(i18n.t('toast.needToLogin'));
         return;
       }
       this.updateModal({
@@ -255,11 +277,11 @@ export default {
     },
     removeTrackFromPlaylist() {
       if (!isAccountLoggedIn()) {
-        this.showToast(locale.t('toast.needToLogin'));
+        this.showToast(i18n.t('toast.needToLogin'));
         return;
       }
       if (confirm(`确定要从歌单删除 ${this.rightClickedTrack.name}？`)) {
-        let trackID = this.rightClickedTrack.id;
+          const trackID = this.rightClickedTrack.id;
         addOrRemoveTrackFromPlaylist({
           op: 'del',
           pid: this.id,
@@ -267,10 +289,10 @@ export default {
         }).then(data => {
           this.showToast(
             data.body.code === 200
-              ? locale.t('toast.removedFromPlaylist')
+              ? i18n.t('toast.removedFromPlaylist')
               : data.body.message
           );
-          this.$parent.removeTrack(trackID);
+          (this.$parent as TrackListParent | undefined)?.removeTrack?.(trackID);
         });
       }
     },
@@ -280,10 +302,10 @@ export default {
         `track:${this.rightClickedTrack.id}`;
       this.$copyText(link)
         .then(() => {
-          this.showToast(locale.t('toast.copied'));
+          this.showToast(i18n.t('toast.copied'));
         })
         .catch(err => {
-          this.showToast(`${locale.t('toast.copyFailed')}${err}`);
+          this.showToast(`${i18n.t('toast.copyFailed')}${err}`);
         });
     },
     removeTrackFromQueue() {
@@ -293,12 +315,12 @@ export default {
     },
     removeTrackFromCloudDisk() {
       if (confirm(`确定要从云盘删除 ${this.rightClickedTrack.songName}？`)) {
-        let trackID = this.rightClickedTrack.songId;
-        cloudDiskTrackDelete(trackID).then(data => {
+        const trackID = this.rightClickedTrack.songId;
+        cloudDiskTrackDelete().then(data => {
           this.showToast(
             data.code === 200 ? '已将此歌曲从云盘删除' : data.message
           );
-          let newCloudDisk = this.liked.cloudDisk.filter(
+          const newCloudDisk = this.liked.cloudDisk.filter(
             t => t.songId !== trackID
           );
           this.$store.commit('updateLikedXXX', {
@@ -309,7 +331,7 @@ export default {
       }
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped></style>

@@ -7,7 +7,7 @@
     >
       <div
         v-if="
-          (settings.lyricsBackground === 'blur') |
+          (settings.lyricsBackground === 'blur') ||
             (settings.lyricsBackground === 'dynamic')
         "
         class="lyrics-background"
@@ -295,10 +295,11 @@
   </transition>
 </template>
 
-<script>
+<script lang="ts">
 // The lyrics page of Apple Music is so gorgeous, so I copy the design.
 // Some of the codes are adapted from an open-source Vue music player implementation
 
+import { defineComponent } from 'vue';
 import { mapState, mapMutations, mapActions } from 'vuex';
 import VueSlider from 'vue-slider-component';
 import ContextMenu from '@/components/ContextMenu.vue';
@@ -312,8 +313,68 @@ import { isAccountLoggedIn } from '@/utils/auth';
 import { hasListSource, getListSourcePath } from '@/utils/playList';
 import locale from '@/locale';
 import { resizeImageUrl } from '@/utils/image';
+import type { TrackId } from '@/types/music';
 
-export default {
+type LyricLine = {
+  rawTime: string;
+  time: number;
+  content: string;
+};
+
+type DisplayLyricLine = LyricLine & {
+  contents: string[];
+};
+
+type RightClickLyric = DisplayLyricLine & {
+  idx: number;
+};
+
+type PlayerTrack = {
+  id?: TrackId;
+  name?: string;
+  ar?: Array<{ id?: TrackId; name?: string }>;
+  al?: { id?: TrackId; name?: string; picUrl?: string };
+};
+
+type PlayerState = {
+  currentTrack: PlayerTrack;
+  currentTrackDuration: number;
+  volume: number;
+  progress: number;
+  playing: boolean;
+  isCurrentTrackLiked?: boolean;
+  isPersonalFM?: boolean;
+  repeatMode?: string;
+  shuffle?: boolean;
+  seek: (position?: number | null, shouldPlay?: boolean) => number | undefined;
+  playPrevTrack: () => void;
+  playOrPause: () => void;
+  playNextFMTrack: () => void;
+  playNextTrack: () => void;
+  play: () => void;
+  moveToFMTrash: () => void;
+  switchRepeatMode: () => void;
+  switchShuffle: () => void;
+  mute: () => void;
+};
+
+type ContextMenuInstance = {
+  openMenu: (e: MouseEvent) => void;
+};
+
+type PaletteLike = {
+  DarkMuted?: {
+    _rgb: [number, number, number];
+  };
+};
+
+type LocaleWithT = typeof locale & {
+  t: (key: string) => string;
+};
+
+const i18n = locale as LocaleWithT;
+
+export default defineComponent({
   name: 'Lyrics',
   components: {
     VueSlider,
@@ -322,59 +383,60 @@ export default {
   },
   data() {
     return {
-      lyricsInterval: null,
-      lyric: [],
-      tlyric: [],
-      romalyric: [],
+      timer: null as ReturnType<typeof setInterval> | null,
+      lyricsInterval: null as ReturnType<typeof setInterval> | null,
+      lyric: [] as LyricLine[],
+      tlyric: [] as LyricLine[],
+      romalyric: [] as LyricLine[],
       lyricType: 'translation', // or 'romaPronunciation'
       highlightLyricIndex: -1,
       minimize: true,
       background: '',
       date: this.formatTime(new Date()),
       isFullscreen: !!document.fullscreenElement,
-      rightClickLyric: null,
+      rightClickLyric: null as RightClickLyric | null,
       progressValue: 0,
-      progressInterval: null,
+      progressInterval: null as ReturnType<typeof setInterval> | null,
     };
   },
   computed: {
     ...mapState(['player', 'settings', 'showLyrics']),
-    currentTrack() {
-      return this.player.currentTrack;
+    currentTrack(): PlayerTrack {
+      return (this.player as PlayerState).currentTrack;
     },
     volume: {
-      get() {
-        return this.player.volume;
+      get(): number {
+        return (this.player as PlayerState).volume;
       },
-      set(value) {
-        this.player.volume = value;
+      set(value: number) {
+        (this.player as PlayerState).volume = value;
       },
     },
     progress: {
-      get() {
+      get(): number {
         return this.progressValue;
       },
-      set(value) {
+      set(value: number) {
         this.progressValue = value;
-        this.player.progress = value;
+        (this.player as PlayerState).progress = value;
       },
     },
-    imageUrl() {
-      return resizeImageUrl(this.player.currentTrack?.al?.picUrl, 1024);
+    imageUrl(): string {
+      return resizeImageUrl(this.currentTrack?.al?.picUrl, 1024);
     },
-    bgImageUrl() {
-      return resizeImageUrl(this.player.currentTrack?.al?.picUrl, 512);
+    bgImageUrl(): string {
+      return resizeImageUrl(this.currentTrack?.al?.picUrl, 512);
     },
-    isShowLyricTypeSwitch() {
+    isShowLyricTypeSwitch(): boolean {
       return this.romalyric.length > 0 && this.tlyric.length > 0;
     },
-    lyricToShow() {
+    lyricToShow(): DisplayLyricLine[] {
       return this.lyricType === 'translation'
         ? this.lyricWithTranslation
         : this.lyricWithRomaPronunciation;
     },
-    lyricWithTranslation() {
-      let ret = [];
+    lyricWithTranslation(): DisplayLyricLine[] {
+      let ret: DisplayLyricLine[] = [];
       // 空内容的去除
       const lyricFiltered = this.lyric.filter(({ content }) =>
         Boolean(content)
@@ -383,7 +445,7 @@ export default {
       if (lyricFiltered.length) {
         lyricFiltered.forEach(l => {
           const { rawTime, time, content } = l;
-          const lyricItem = { time, content, contents: [content] };
+          const lyricItem: DisplayLyricLine = { ...l, time, content, contents: [content] };
           const sameTimeTLyric = this.tlyric.find(
             ({ rawTime: tLyricRawTime }) => tLyricRawTime === rawTime
           );
@@ -404,8 +466,8 @@ export default {
       }
       return ret;
     },
-    lyricWithRomaPronunciation() {
-      let ret = [];
+    lyricWithRomaPronunciation(): DisplayLyricLine[] {
+      let ret: DisplayLyricLine[] = [];
       // 空内容的去除
       const lyricFiltered = this.lyric.filter(({ content }) =>
         Boolean(content)
@@ -414,7 +476,7 @@ export default {
       if (lyricFiltered.length) {
         lyricFiltered.forEach(l => {
           const { rawTime, time, content } = l;
-          const lyricItem = { time, content, contents: [content] };
+          const lyricItem: DisplayLyricLine = { ...l, time, content, contents: [content] };
           const sameTimeRomaLyric = this.romalyric.find(
             ({ rawTime: tLyricRawTime }) => tLyricRawTime === rawTime
           );
@@ -435,23 +497,23 @@ export default {
       }
       return ret;
     },
-    lyricFontSize() {
+    lyricFontSize(): Record<string, string> {
       return {
         fontSize: `${this.$store.state.settings.lyricFontSize || 28}px`,
       };
     },
-    noLyric() {
+    noLyric(): boolean {
       return this.lyric.length == 0;
     },
-    artist() {
+    artist(): { id?: TrackId; name?: string } {
       return this.currentTrack?.ar
         ? this.currentTrack.ar[0]
         : { id: 0, name: 'unknown' };
     },
-    album() {
+    album(): { id?: TrackId; name?: string } {
       return this.currentTrack?.al || { id: 0, name: 'unknown' };
     },
-    theme() {
+    theme(): string {
       return this.settings.lyricsBackground === true ? 'dark' : 'auto';
     },
   },
@@ -460,12 +522,12 @@ export default {
       this.getLyric();
       this.getCoverColor();
     },
-    showLyrics(show) {
+    showLyrics(show: boolean) {
       if (show) {
         this.setLyricsInterval();
         this.$store.commit('enableScrolling', false);
       } else {
-        clearInterval(this.lyricsInterval);
+        if (this.lyricsInterval) clearInterval(this.lyricsInterval);
         this.$store.commit('enableScrolling', true);
       }
     },
@@ -488,30 +550,29 @@ export default {
   },
   beforeUnmount: function () {
     if (this.timer) {
-      clearInterval(this.timer);
+      if (this.timer) clearInterval(this.timer);
     }
-    clearInterval(this.progressInterval);
+    if (this.progressInterval) clearInterval(this.progressInterval);
   },
   unmounted() {
-    clearInterval(this.lyricsInterval);
+    if (this.lyricsInterval) clearInterval(this.lyricsInterval);
   },
   methods: {
     ...mapMutations(['toggleLyrics', 'updateModal']),
-    ...mapActions(['likeATrack']),
+    ...mapActions(['likeATrack', 'showToast']),
     syncProgress() {
-      this.progressValue = this.player.seek(null, false) ?? 0;
+      this.progressValue = (this.player as PlayerState).seek(null, false) ?? 0;
     },
     initDate() {
-      var _this = this;
-      clearInterval(this.timer);
-      this.timer = setInterval(function () {
-        _this.date = _this.formatTime(new Date());
+      if (this.timer) clearInterval(this.timer);
+      this.timer = setInterval(() => {
+        this.date = this.formatTime(new Date());
       }, 1000);
     },
-    formatTime(value) {
-      let hour = value.getHours().toString();
-      let minute = value.getMinutes().toString();
-      let second = value.getSeconds().toString();
+    formatTime(value: Date) {
+      const hour = value.getHours().toString();
+      const minute = value.getMinutes().toString();
+      const second = value.getSeconds().toString();
       return (
         hour.padStart(2, '0') +
         ':' +
@@ -529,7 +590,7 @@ export default {
     },
     addToPlaylist() {
       if (!isAccountLoggedIn()) {
-        this.showToast(locale.t('toast.needToLogin'));
+        this.showToast(i18n.t('toast.needToLogin'));
         return;
       }
       this.$store.dispatch('fetchLikedPlaylist');
@@ -607,10 +668,10 @@ export default {
       this.lyricType =
         this.lyricType === 'translation' ? 'romaPronunciation' : 'translation';
     },
-    formatTrackTime(value) {
+    formatTrackTime(value?: number) {
       return formatTrackTime(value);
     },
-    clickLyricLine(value, startPlay = false) {
+    clickLyricLine(value: number, startPlay = false) {
       // TODO: 双击选择还会选中文字，考虑搞个右键菜单复制歌词
       let jumpFlag = false;
       this.lyric.filter(function (item) {
@@ -618,19 +679,19 @@ export default {
           jumpFlag = true;
         }
       });
-      if (window.getSelection().toString().length === 0 && !jumpFlag) {
-        this.player.seek(value);
+      if ((window.getSelection()?.toString().length || 0) === 0 && !jumpFlag) {
+        (this.player as PlayerState).seek(value);
       }
       if (startPlay === true) {
-        this.player.play();
+        (this.player as PlayerState).play();
       }
     },
-    openLyricMenu(e, lyric, idx) {
+    openLyricMenu(e: MouseEvent, lyric: DisplayLyricLine, idx: number) {
       this.rightClickLyric = { ...lyric, idx };
-      this.$refs.lyricMenu.openMenu(e);
+      (this.$refs.lyricMenu as ContextMenuInstance | undefined)?.openMenu(e);
       e.preventDefault();
     },
-    copyLyric(withTranslation) {
+    copyLyric(withTranslation: boolean) {
       if (this.rightClickLyric) {
         const idx = this.rightClickLyric.idx;
         if (!withTranslation) {
@@ -643,7 +704,7 @@ export default {
     setLyricsInterval() {
       this.lyricsInterval = setInterval(() => {
         const progress = this.player.seek(null, false) ?? 0;
-        let oldHighlightLyricIndex = this.highlightLyricIndex;
+        const oldHighlightLyricIndex = this.highlightLyricIndex;
         this.highlightLyricIndex = this.lyric.findIndex((l, index) => {
           const nextLyric = this.lyric[index + 1];
           return (
@@ -673,9 +734,11 @@ export default {
       if (this.settings.lyricsBackground !== true) return;
       const cover = resizeImageUrl(this.currentTrack.al?.picUrl, 256);
       if (!cover) return;
-      Vibrant.from(cover, { colorCount: 1 })
+      (Vibrant as any)
+        .from(cover, { colorCount: 1 })
         .getPalette()
-        .then(palette => {
+        .then((palette: PaletteLike) => {
+          if (!palette.DarkMuted) return;
           const originColor = Color.rgb(palette.DarkMuted._rgb);
           const color = originColor.darken(0.1).rgb().string();
           const color2 = originColor.lighten(0.28).rotate(-30).rgb().string();
@@ -692,7 +755,7 @@ export default {
       this.player.mute();
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

@@ -185,7 +185,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState, mapMutations, mapActions } from 'vuex';
 import '@/assets/css/slider.css';
 
@@ -193,8 +194,40 @@ import ButtonIcon from '@/components/ButtonIcon.vue';
 import VueSlider from 'vue-slider-component';
 import { goToListSource, hasListSource } from '@/utils/playList';
 import { formatTrackTime } from '@/utils/common';
+import type { TrackId } from '@/types/music';
 
-export default {
+type PlayerTrack = {
+  id?: TrackId;
+  name?: string;
+  ar?: Array<{ id?: TrackId; name?: string }>;
+  al?: { id?: TrackId; picUrl?: string };
+};
+
+type PlayerState = {
+  currentTrack: PlayerTrack;
+  currentTrackDuration: number;
+  volume: number;
+  progress: number;
+  playing: boolean;
+  isCurrentTrackLiked?: boolean;
+  isPersonalFM?: boolean;
+  repeatMode?: string;
+  shuffle?: boolean;
+  reversed?: boolean;
+  _howler?: { _src?: string };
+  seek: (position?: number | null, shouldPlay?: boolean) => number | undefined;
+  playPrevTrack: () => void;
+  playOrPause: () => void;
+  playNextFMTrack: () => void;
+  playNextTrack: () => void;
+  moveToFMTrash: () => void;
+  switchRepeatMode: () => void;
+  switchShuffle: () => void;
+  switchReversed: () => void;
+  mute: () => void;
+};
+
+export default defineComponent({
   name: 'Player',
   components: {
     ButtonIcon,
@@ -202,38 +235,38 @@ export default {
   },
   data() {
     return {
-      mouseDownTarget: null,
+      mouseDownTarget: null as EventTarget | null,
       progressValue: 0,
-      progressInterval: null,
+      progressInterval: null as ReturnType<typeof setInterval> | null,
     };
   },
   computed: {
     ...mapState(['player', 'settings', 'data']),
-    currentTrack() {
-      return this.player.currentTrack;
+    currentTrack(): PlayerTrack {
+      return (this.player as PlayerState).currentTrack;
     },
     volume: {
-      get() {
-        return this.player.volume;
+      get(): number {
+        return (this.player as PlayerState).volume;
       },
-      set(value) {
-        this.player.volume = value;
+      set(value: number) {
+        (this.player as PlayerState).volume = value;
       },
     },
     progress: {
-      get() {
+      get(): number {
         return this.progressValue;
       },
-      set(value) {
+      set(value: number) {
         this.progressValue = value;
-        this.player.progress = value;
+        (this.player as PlayerState).progress = value;
       },
     },
-    playing() {
-      return this.player.playing;
+    playing(): boolean {
+      return (this.player as PlayerState).playing;
     },
-    audioSource() {
-      return this.player._howler?._src.includes('kuwo.cn')
+    audioSource(): string {
+      return (this.player as PlayerState)._howler?._src?.includes('kuwo.cn')
         ? '音源来自酷我音乐'
         : '';
     },
@@ -245,21 +278,21 @@ export default {
     window.addEventListener('keydown', this.handleKeydown);
   },
   beforeUnmount() {
-    clearInterval(this.progressInterval);
+    if (this.progressInterval) clearInterval(this.progressInterval);
     window.removeEventListener('keydown', this.handleKeydown);
   },
   methods: {
     ...mapMutations(['toggleLyrics']),
     ...mapActions(['showToast', 'likeATrack']),
     syncProgress() {
-      this.progressValue = this.player.seek(null, false) ?? 0;
+      this.progressValue = (this.player as PlayerState).seek(null, false) ?? 0;
     },
-    handleClick(event) {
+    handleClick(event: MouseEvent) {
       if (event.target == this.mouseDownTarget) {
         this.toggleLyrics();
       }
     },
-    handleMouseDown(event) {
+    handleMouseDown(event: MouseEvent) {
       this.mouseDownTarget = event.target;
     },
     playPrevTrack() {
@@ -281,7 +314,7 @@ export default {
         ? this.$router.go(-1)
         : this.$router.push({ name: 'next' });
     },
-    formatTrackTime(value) {
+    formatTrackTime(value: number) {
       return formatTrackTime(value);
     },
     hasList() {
@@ -291,10 +324,11 @@ export default {
       goToListSource();
     },
     goToAlbum() {
-      if (this.player.currentTrack.al.id === 0) return;
-      this.$router.push({ path: '/album/' + this.player.currentTrack.al.id });
+      const albumId = (this.player as PlayerState).currentTrack.al?.id;
+      if (albumId === 0) return;
+      this.$router.push({ path: '/album/' + albumId });
     },
-    goToArtist(id) {
+    goToArtist(id: TrackId) {
       this.$router.push({ path: '/artist/' + id });
     },
     moveToFMTrash() {
@@ -330,7 +364,7 @@ export default {
       }
     },
 
-    handleKeydown(event) {
+    handleKeydown(event: KeyboardEvent) {
       switch (event.code) {
         case 'MediaPlayPause':
           this.playOrPause();
@@ -346,7 +380,7 @@ export default {
       }
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

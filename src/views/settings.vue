@@ -578,7 +578,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { mapState, mapActions, mapMutations } from 'vuex';
 import { isLooseLoggedIn, doLogout } from '@/utils/auth';
 import { auth as lastfmAuth } from '@/api/lastfm';
@@ -590,44 +591,68 @@ import pkg from '../../package.json';
 
 const validShortcutCodes = ['=', '-', '~', '[', ']', ';', "'", ',', '.', '/'];
 
-export default {
+type ShortcutInput = {
+  id: string;
+  type: string;
+  recording: boolean;
+};
+
+type ShortcutPayload = {
+  id: string;
+  type: string;
+  shortcut: string;
+};
+
+type TracksCache = {
+  size: string;
+  length: number;
+};
+
+type SourceConfig = Record<string, any>;
+
+type LocaleWithCompat = typeof locale & {
+  locale: string;
+};
+
+export default defineComponent({
   name: 'Settings',
   data() {
     return {
       tracksCache: {
         size: '0KB',
         length: 0,
-      },
+      } as TracksCache,
       allOutputDevices: [
         {
           deviceId: 'default',
           label: 'settings.permissionRequired',
         },
-      ],
+      ] as MediaDeviceInfo[],
       shortcutInput: {
         id: '',
         type: '',
         recording: false,
-      },
-      recordedShortcut: [],
+      } as ShortcutInput,
+      recordedShortcut: [] as KeyboardEvent[],
       refreshingLibrary: false,
+      withoutAudioPriviledge: true,
     };
   },
   computed: {
     ...mapState(['player', 'settings', 'data', 'lastfm']),
-    isElectron() {
-      return process.env.IS_ELECTRON;
+    isElectron(): boolean {
+      return Boolean(process.env.IS_ELECTRON);
     },
-    isMac() {
+    isMac(): boolean {
       return /macintosh|mac os x/i.test(navigator.userAgent);
     },
-    isLinux() {
+    isLinux(): boolean {
       return process.platform === 'linux';
     },
-    version() {
+    version(): string {
       return pkg.version;
     },
-    showUserInfo() {
+    showUserInfo(): boolean {
       return isLooseLoggedIn() && this.data.user.nickname;
     },
     currentSource() {
@@ -639,8 +664,8 @@ export default {
         raw: source,
       };
     },
-    recordedShortcutComputed() {
-      let shortcut = [];
+    recordedShortcutComputed(): string {
+      let shortcut: string[] = [];
       this.recordedShortcut.map(e => {
         if (e.keyCode >= 65 && e.keyCode <= 90) {
           // A-Z
@@ -665,7 +690,7 @@ export default {
           shortcut.push(e.key);
         }
       });
-      const sortTable = {
+      const sortTable: Record<string, number> = {
         Control: 1,
         Shift: 2,
         Alt: 3,
@@ -681,16 +706,15 @@ export default {
           return 0;
         }
       });
-      shortcut = shortcut.join('+');
-      return shortcut;
+      return shortcut.join('+');
     },
 
     lang: {
       get() {
         return this.settings.lang;
       },
-      set(lang) {
-        locale.locale = lang;
+      set(lang: string) {
+        (locale as LocaleWithCompat).locale = lang;
         this.$store.commit('changeLang', lang);
       },
     },
@@ -698,7 +722,7 @@ export default {
       get() {
         return this.settings.musicLanguage ?? 'all';
       },
-      set(value) {
+      set(value: string) {
         this.$store.commit('updateSettings', {
           key: 'musicLanguage',
           value,
@@ -710,7 +734,7 @@ export default {
         if (this.settings.appearance === undefined) return 'auto';
         return this.settings.appearance;
       },
-      set(value) {
+      set(value: string) {
         this.$store.commit('updateSettings', {
           key: 'appearance',
           value,
@@ -723,7 +747,7 @@ export default {
         if (this.settings.trayIconTheme === undefined) return 'auto';
         return this.settings.trayIconTheme;
       },
-      set(value) {
+      set(value: string) {
         this.$store.commit('updateSettings', {
           key: 'trayIconTheme',
           value,
@@ -737,7 +761,7 @@ export default {
       get() {
         return this.settings.musicQuality ?? 320000;
       },
-      set(value) {
+      set(value: number) {
         if (value === this.settings.musicQuality) return;
         this.$store.commit('changeMusicQuality', value);
         this.clearCache();
@@ -748,7 +772,7 @@ export default {
         if (this.settings.lyricFontSize === undefined) return 28;
         return this.settings.lyricFontSize;
       },
-      set(value) {
+      set(value: number) {
         this.$store.commit('changeLyricFontSize', value);
       },
     },
@@ -764,7 +788,7 @@ export default {
           return 'default'; // Default deviceId
         return this.settings.outputDevice;
       },
-      set(deviceId) {
+      set(deviceId: string) {
         if (deviceId === this.settings.outputDevice || deviceId === undefined)
           return;
         this.$store.commit('changeOutputDevice', deviceId);
@@ -776,7 +800,7 @@ export default {
         if (this.settings.showPlaylistsByAppleMusic === undefined) return true;
         return this.settings.showPlaylistsByAppleMusic;
       },
-      set(value) {
+      set(value: boolean) {
         this.$store.commit('updateSettings', {
           key: 'showPlaylistsByAppleMusic',
           value,
@@ -788,7 +812,7 @@ export default {
         if (this.settings.nyancatStyle === undefined) return false;
         return this.settings.nyancatStyle;
       },
-      set(value) {
+      set(value: boolean) {
         this.$store.commit('updateSettings', {
           key: 'nyancatStyle',
           value,
@@ -800,7 +824,7 @@ export default {
         if (this.settings.automaticallyCacheSongs === undefined) return false;
         return this.settings.automaticallyCacheSongs;
       },
-      set(value) {
+      set(value: boolean) {
         this.$store.commit('updateSettings', {
           key: 'automaticallyCacheSongs',
           value,
@@ -814,7 +838,7 @@ export default {
       get() {
         return this.settings.showLyricsTranslation;
       },
-      set(value) {
+      set(value: boolean) {
         this.$store.commit('updateSettings', {
           key: 'showLyricsTranslation',
           value,
@@ -825,7 +849,7 @@ export default {
       get() {
         return this.settings.lyricsBackground || false;
       },
-      set(value) {
+      set(value: boolean | string) {
         this.$store.commit('updateSettings', {
           key: 'lyricsBackground',
           value,
@@ -836,7 +860,7 @@ export default {
       get() {
         return this.settings.showLyricsTime;
       },
-      set(value) {
+      set(value: boolean) {
         this.$store.commit('updateSettings', {
           key: 'showLyricsTime',
           value,
@@ -847,7 +871,7 @@ export default {
       get() {
         return this.settings.closeAppOption;
       },
-      set(value) {
+      set(value: string) {
         this.$store.commit('updateSettings', {
           key: 'closeAppOption',
           value,
@@ -918,7 +942,7 @@ export default {
         return this.settings.proxyConfig?.protocol || 'noProxy';
       },
       set(value) {
-        let config = this.settings.proxyConfig || {};
+        let config: SourceConfig = this.settings.proxyConfig || {};
         config.protocol = value;
         if (value === 'noProxy') {
           window.electronAPI?.send('removeProxy');
@@ -934,8 +958,8 @@ export default {
       get() {
         return this.settings.proxyConfig?.server || '';
       },
-      set(value) {
-        let config = this.settings.proxyConfig || {};
+      set(value: string) {
+        let config: SourceConfig = this.settings.proxyConfig || {};
         config.server = value;
         this.$store.commit('updateSettings', {
           key: 'proxyConfig',
@@ -947,7 +971,7 @@ export default {
       get() {
         return this.settings.enableRealIP || false;
       },
-      set(value) {
+      set(value: boolean) {
         this.$store.commit('updateSettings', {
           key: 'enableRealIP',
           value: value,
@@ -958,7 +982,7 @@ export default {
       get() {
         return this.settings.realIP || '';
       },
-      set(value) {
+      set(value: string) {
         this.$store.commit('updateSettings', {
           key: 'realIP',
           value: value,
@@ -969,8 +993,8 @@ export default {
       get() {
         return this.settings.proxyConfig?.port || '';
       },
-      set(value) {
-        let config = this.settings.proxyConfig || {};
+      set(value: string | number) {
+        let config: SourceConfig = this.settings.proxyConfig || {};
         config.port = value;
         this.$store.commit('updateSettings', {
           key: 'proxyConfig',
@@ -982,14 +1006,14 @@ export default {
       get() {
         return this.settings.linuxEnableCustomTitlebar;
       },
-      set(value) {
+      set(value: boolean) {
         this.$store.commit('updateSettings', {
           key: 'linuxEnableCustomTitlebar',
           value,
         });
       },
     },
-    isLastfmConnected() {
+    isLastfmConnected(): boolean {
       return this.lastfm && this.lastfm.key !== undefined;
     },
   },
@@ -1023,16 +1047,16 @@ export default {
 
       this.refreshingLibrary = true;
       try {
-        const result = await provider.refreshLibrary(this.currentSource.raw);
+        const result = await provider.refreshLibrary();
         this.updateData({ key: 'librarySongsUpdatedAt', value: Date.now() });
-        const count = result?.audio ?? result?.count;
+        const count = (result as { audio?: number; count?: number })?.audio ?? result?.count;
         this.refreshingLibrary = false;
         this.showToast(
           count !== undefined
             ? `已刷新媒体库，读取 ${count} 首歌曲`
             : '已开始刷新媒体库'
         );
-      } catch (error) {
+      } catch (error: any) {
         this.refreshingLibrary = false;
         this.showToast(`刷新媒体库失败：${error.message || error}`);
       }
@@ -1110,7 +1134,7 @@ export default {
     clickOutside() {
       this.exitRecordShortcut();
     },
-    formatShortcut(shortcut) {
+    formatShortcut(shortcut: string) {
       shortcut = shortcut
         .replaceAll('+', ' + ')
         .replace('Up', '↑')
@@ -1132,7 +1156,7 @@ export default {
       }
       return shortcut.replace('CommandOrControl', 'Ctrl');
     },
-    readyToRecordShortcut(id, type) {
+    readyToRecordShortcut(id: string, type: string) {
       if (type === 'globalShortcut' && this.enableGlobalShortcut === false) {
         return;
       }
@@ -1143,7 +1167,7 @@ export default {
         'disable'
       );
     },
-    handleShortcutKeydown(e) {
+    handleShortcutKeydown(e: KeyboardEvent) {
       if (this.shortcutInput.recording === false) return;
       e.preventDefault();
       if (this.recordedShortcut.find(s => s.keyCode === e.keyCode)) return;
@@ -1158,7 +1182,7 @@ export default {
         this.saveShortcut();
       }
     },
-    handleShortcutKeyup(e) {
+    handleShortcutKeyup(e: KeyboardEvent) {
       if (this.recordedShortcut.find(s => s.keyCode === e.keyCode)) {
         this.recordedShortcut = this.recordedShortcut.filter(
           s => s.keyCode !== e.keyCode
@@ -1171,7 +1195,7 @@ export default {
         id,
         type,
         shortcut: this.recordedShortcutComputed,
-      };
+      } as ShortcutPayload;
       this.$store.commit('updateShortcut', payload);
       window.electronAPI?.send('updateShortcut', payload);
       this.showToast('快捷键已保存');
@@ -1188,7 +1212,7 @@ export default {
       window.electronAPI?.send('restoreDefaultShortcuts');
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

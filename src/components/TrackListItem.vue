@@ -3,7 +3,7 @@
     class="track"
     :class="trackClass"
     :style="trackStyle"
-    :title="showUnavailableSongInGreyStyle ? track.reason : ''"
+    :title="showUnavailableSongInGreyStyle ? trackReason : ''"
     @mouseover="hover = true"
     @mouseleave="hover = false"
   >
@@ -32,25 +32,25 @@
     <div class="title-and-artist">
       <div class="container">
         <div class="title">
-          {{ track.name }}
+          {{ trackName }}
           <span v-if="isSubTitle" :title="subTitle" class="sub-title">
             ({{ subTitle }})
           </span>
           <span v-if="isAlbum" class="featured">
             <ArtistsInLine
-              :artists="track.ar"
-              :exclude="$parent.albumObject.artist.name"
+              :artists="trackArtists"
+              :exclude="albumArtistName"
               prefix="-"
           /></span>
           <span
-            v-if="isAlbum && (track.mark & 1048576) === 1048576"
+            v-if="isAlbum && isExplicit"
             class="explicit-symbol"
             ><ExplicitSymbol
           /></span>
         </div>
         <div v-if="!isAlbum" class="artist">
           <span
-            v-if="(track.mark & 1048576) === 1048576"
+            v-if="isExplicit"
             class="explicit-symbol before-artist"
             ><ExplicitSymbol :size="15"
           /></span>
@@ -61,8 +61,8 @@
     </div>
 
     <div v-if="showAlbumName" class="album">
-      <router-link v-if="album && album.id" :to="`/album/${album.id}`">{{
-        album.name
+      <router-link v-if="albumId" :to="`/album/${albumId}`">{{
+        albumName
       }}</router-link>
       <div></div>
     </div>
@@ -79,27 +79,58 @@
       </button>
     </div>
     <div v-if="showTrackTime" class="time">
-      {{ $filters.formatTime(track.dt) }}
+      {{ formatTrackTime(trackDuration) }}
     </div>
 
-    <div v-if="track.playCount" class="count"> {{ track.playCount }}</div>
+    <div v-if="trackPlayCount" class="count"> {{ trackPlayCount }}</div>
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import ArtistsInLine from '@/components/ArtistsInLine.vue';
 import ExplicitSymbol from '@/components/ExplicitSymbol.vue';
-import { mapState } from 'vuex';
 import { isNil } from 'lodash';
 import { resizeImageUrl } from '@/utils/image';
+import { formatTime } from '@/utils/filters';
+import type { TrackId } from '@/types/music';
 
-export default {
+type TrackListTrack = {
+  id?: TrackId;
+  name?: string;
+  reason?: string;
+  dt?: number;
+  mark?: number;
+  playCount?: number;
+  playable?: boolean;
+  privilege?: { pl?: number };
+  ar?: Array<{ id?: TrackId; name?: string }>;
+  artists?: Array<{ id?: TrackId; name?: string }>;
+  al?: { id?: TrackId; name?: string; picUrl?: string };
+  album?: { id?: TrackId; name?: string; picUrl?: string };
+  simpleSong?: TrackListTrack;
+  tns?: string[];
+  alia?: string[];
+  [key: string]: any;
+};
+
+type TrackListParent = {
+  type?: string;
+  albumObject?: { artist?: { name?: string } };
+  liked?: { songs?: TrackId[] };
+  rightClickedTrack?: { id?: TrackId };
+  playThisList?: (trackId: TrackId | undefined) => void;
+  likeATrack?: (trackId: TrackId | undefined) => void;
+};
+
+export default defineComponent({
   name: 'TrackListItem',
   components: { ArtistsInLine, ExplicitSymbol },
 
   props: {
     trackProp: {
-      type: Object,
+      type: Object as PropType<TrackListTrack>,
       default: () => ({}),
     },
     trackNo: {
@@ -113,37 +144,63 @@ export default {
   },
 
   data() {
-    return { hover: false, trackStyle: {} };
+    return { hover: false, trackStyle: {} as Record<string, string> };
   },
 
   computed: {
-    ...mapState(['settings']),
-    track() {
+    parentList(): TrackListParent {
+      return this.$parent as TrackListParent;
+    },
+    track(): any {
       return this.type === 'cloudDisk'
         ? this.trackProp.simpleSong
         : this.trackProp;
     },
-    playable() {
+    playable(): boolean | undefined {
       return this.track?.privilege?.pl > 0 || this.track?.playable;
     },
-    imgUrl() {
+    imgUrl(): any {
       const image =
         this.track?.al?.picUrl ??
         this.track?.album?.picUrl ??
         '/img/logos/yesplaymusic.png';
       return resizeImageUrl(image, 224);
     },
-    artists() {
+    artists(): any[] {
       const { ar, artists } = this.track;
       if (!isNil(ar)) return ar;
       if (!isNil(artists)) return artists;
       return [];
     },
-    album() {
+    album(): any {
       return this.track.album || this.track.al || this.track?.simpleSong?.al;
     },
-    subTitle() {
-      let tn = undefined;
+    trackName(): string | undefined {
+      return this.track.name;
+    },
+    trackReason(): string | undefined {
+      return this.track.reason;
+    },
+    trackArtists(): any[] {
+      return this.track.ar || [];
+    },
+    trackDuration(): number | undefined {
+      return this.track.dt;
+    },
+    trackPlayCount(): number | undefined {
+      return this.track.playCount;
+    },
+    albumId(): TrackId | undefined {
+      return this.album?.id;
+    },
+    albumName(): string | undefined {
+      return this.album?.name;
+    },
+    isExplicit(): boolean {
+      return ((this.track.mark || 0) & 1048576) === 1048576;
+    },
+    subTitle(): string | undefined {
+      let tn: string | undefined = undefined;
       if (
         this.track?.tns?.length > 0 &&
         this.track.name !== this.track.tns[0]
@@ -159,7 +216,10 @@ export default {
       }
     },
     type() {
-      return this.$parent.type;
+      return this.parentList.type;
+    },
+    albumArtistName(): string | undefined {
+      return this.parentList.albumObject?.artist?.name;
     },
     isAlbum() {
       return this.type === 'album';
@@ -175,7 +235,7 @@ export default {
       return this.type === 'playlist';
     },
     isLiked() {
-      return this.$parent.liked.songs.some(
+      return (this.parentList.liked?.songs || []).some(
         id => String(id) === String(this.track?.id)
       );
     },
@@ -192,11 +252,13 @@ export default {
       return trackClass;
     },
     isMenuOpened() {
-      return this.$parent.rightClickedTrack.id === this.track.id ? true : false;
+      return this.parentList.rightClickedTrack?.id === this.track.id
+        ? true
+        : false;
     },
     focus() {
       return (
-        (this.hover && this.$parent.rightClickedTrack.id === 0) ||
+        (this.hover && this.parentList.rightClickedTrack?.id === 0) ||
         this.isMenuOpened
       );
     },
@@ -219,17 +281,20 @@ export default {
 
   methods: {
     goToAlbum() {
-      if (this.track.al.id === 0) return;
-      this.$router.push({ path: '/album/' + this.track.al.id });
+      if (this.track.al?.id === 0) return;
+      this.$router.push({ path: '/album/' + this.track.al?.id });
     },
     playTrack() {
-      this.$parent.playThisList(this.track.id);
+      this.parentList.playThisList?.(this.track.id);
     },
     likeThisSong() {
-      this.$parent.likeATrack(this.track.id);
+      this.parentList.likeATrack?.(this.track.id);
+    },
+    formatTrackTime(duration: number | undefined) {
+      return formatTime(duration || 0);
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>
