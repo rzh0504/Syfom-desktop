@@ -194,9 +194,7 @@ export default defineComponent({
       );
     },
     rightClickedTrackComputed() {
-      return this.type === 'cloudDisk'
-        ? emptyTrack
-        : this.rightClickedTrack;
+      return this.type === 'cloudDisk' ? emptyTrack : this.rightClickedTrack;
     },
   },
   created() {
@@ -281,7 +279,7 @@ export default defineComponent({
         return;
       }
       if (confirm(`确定要从歌单删除 ${this.rightClickedTrack.name}？`)) {
-          const trackID = this.rightClickedTrack.id;
+        const trackID = this.rightClickedTrack.id;
         addOrRemoveTrackFromPlaylist({
           op: 'del',
           pid: this.id,

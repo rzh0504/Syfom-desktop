@@ -1049,7 +1049,9 @@ export default defineComponent({
       try {
         const result = await provider.refreshLibrary();
         this.updateData({ key: 'librarySongsUpdatedAt', value: Date.now() });
-        const count = (result as { audio?: number; count?: number })?.audio ?? result?.count;
+        const count =
+          (result as { audio?: number; count?: number })?.audio ??
+          result?.count;
         this.refreshingLibrary = false;
         this.showToast(
           count !== undefined

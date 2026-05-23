@@ -210,7 +210,12 @@ import SvgIcon from '@/components/SvgIcon.vue';
 import type { Track, TrackId } from '@/types/music';
 
 type PlaylistFilter = 'all' | 'mine' | 'liked';
-type LibraryTab = 'playlists' | 'librarySongs' | 'albums' | 'artists' | 'playHistory';
+type LibraryTab =
+  | 'playlists'
+  | 'librarySongs'
+  | 'albums'
+  | 'artists'
+  | 'playHistory';
 type PlayHistoryMode = 'week' | 'all';
 
 type PlaylistLike = {
@@ -269,7 +274,9 @@ export default defineComponent({
 
       const lyricLine = lyric
         .split('\n')
-        .filter((line: string) => !line.includes('作词') && !line.includes('作曲'));
+        .filter(
+          (line: string) => !line.includes('作词') && !line.includes('作曲')
+        );
 
       // Pick 3 or fewer lyrics based on the lyric lines.
       const lyricsToPick = Math.min(lyricLine.length, 3);
@@ -364,20 +371,28 @@ export default defineComponent({
 
       this.librarySongsLoading = true;
       return getLibrarySongs({ offset: nextOffset, limit: pageSize })
-        .then(({ songs = [], hasMore = false }: { songs?: Track[]; hasMore?: boolean }) => {
-          const existingIds = new Set(this.librarySongs.map(song => song.id));
-          const merged = reset ? [] : [...this.librarySongs];
-          songs.forEach(song => {
-            if (!existingIds.has(song.id)) {
-              merged.push(song);
-              existingIds.add(song.id);
-            }
-          });
+        .then(
+          ({
+            songs = [],
+            hasMore = false,
+          }: {
+            songs?: Track[];
+            hasMore?: boolean;
+          }) => {
+            const existingIds = new Set(this.librarySongs.map(song => song.id));
+            const merged = reset ? [] : [...this.librarySongs];
+            songs.forEach(song => {
+              if (!existingIds.has(song.id)) {
+                merged.push(song);
+                existingIds.add(song.id);
+              }
+            });
 
-          this.librarySongs = merged;
-          this.librarySongsOffset = merged.length;
-          this.librarySongsHasMore = Boolean(hasMore);
-        })
+            this.librarySongs = merged;
+            this.librarySongsOffset = merged.length;
+            this.librarySongsHasMore = Boolean(hasMore);
+          }
+        )
         .catch((error: Error) => {
           this.showToast(`读取歌曲失败：${error.message || error}`);
           this.librarySongsHasMore = false;
@@ -437,10 +452,14 @@ export default defineComponent({
       });
     },
     openPlaylistTabMenu(e: MouseEvent) {
-      (this.$refs.playlistTabMenu as ContextMenuInstance | undefined)?.openMenu(e);
+      (this.$refs.playlistTabMenu as ContextMenuInstance | undefined)?.openMenu(
+        e
+      );
     },
     openPlayModeTabMenu(e: MouseEvent) {
-      (this.$refs.playModeTabMenu as ContextMenuInstance | undefined)?.openMenu(e);
+      (this.$refs.playModeTabMenu as ContextMenuInstance | undefined)?.openMenu(
+        e
+      );
     },
     changePlaylistFilter(type: PlaylistFilter) {
       this.updateData({ key: 'libraryPlaylistFilter', value: type });

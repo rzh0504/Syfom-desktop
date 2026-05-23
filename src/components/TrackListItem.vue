@@ -42,16 +42,12 @@
               :exclude="albumArtistName"
               prefix="-"
           /></span>
-          <span
-            v-if="isAlbum && isExplicit"
-            class="explicit-symbol"
+          <span v-if="isAlbum && isExplicit" class="explicit-symbol"
             ><ExplicitSymbol
           /></span>
         </div>
         <div v-if="!isAlbum" class="artist">
-          <span
-            v-if="isExplicit"
-            class="explicit-symbol before-artist"
+          <span v-if="isExplicit" class="explicit-symbol before-artist"
             ><ExplicitSymbol :size="15"
           /></span>
           <ArtistsInLine :artists="artists" />

@@ -7,8 +7,8 @@
     >
       <div
         v-if="
-          (settings.lyricsBackground === 'blur') ||
-            (settings.lyricsBackground === 'dynamic')
+          settings.lyricsBackground === 'blur' ||
+          settings.lyricsBackground === 'dynamic'
         "
         class="lyrics-background"
         :class="{
@@ -445,7 +445,12 @@ export default defineComponent({
       if (lyricFiltered.length) {
         lyricFiltered.forEach(l => {
           const { rawTime, time, content } = l;
-          const lyricItem: DisplayLyricLine = { ...l, time, content, contents: [content] };
+          const lyricItem: DisplayLyricLine = {
+            ...l,
+            time,
+            content,
+            contents: [content],
+          };
           const sameTimeTLyric = this.tlyric.find(
             ({ rawTime: tLyricRawTime }) => tLyricRawTime === rawTime
           );
@@ -476,7 +481,12 @@ export default defineComponent({
       if (lyricFiltered.length) {
         lyricFiltered.forEach(l => {
           const { rawTime, time, content } = l;
-          const lyricItem: DisplayLyricLine = { ...l, time, content, contents: [content] };
+          const lyricItem: DisplayLyricLine = {
+            ...l,
+            time,
+            content,
+            contents: [content],
+          };
           const sameTimeRomaLyric = this.romalyric.find(
             ({ rawTime: tLyricRawTime }) => tLyricRawTime === rawTime
           );

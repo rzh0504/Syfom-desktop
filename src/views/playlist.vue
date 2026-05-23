@@ -257,7 +257,10 @@ type LocaleWithT = typeof locale & {
 
 const i18n = locale as LocaleWithT;
 
-const specialPlaylist: Record<string | number, { name: string; gradient: string }> = {
+const specialPlaylist: Record<
+  string | number,
+  { name: string; gradient: string }
+> = {
   2829816518: {
     name: '欧美私人订制',
     gradient: 'gradient-pink-purple-blue',
@@ -533,14 +536,14 @@ export default defineComponent({
     loadMore(loadNum = 100) {
       const trackIDs = this.playlist.trackIds
         .filter((_t, index) => {
-        if (
-          index > this.lastLoadedTrackIndex &&
-          index <= this.lastLoadedTrackIndex + loadNum
-        ) {
-          return true;
-        }
-        return false;
-      })
+          if (
+            index > this.lastLoadedTrackIndex &&
+            index <= this.lastLoadedTrackIndex + loadNum
+          ) {
+            return true;
+          }
+          return false;
+        })
         .map(t => t.id);
       getTrackDetail(trackIDs.join(',')).then(data => {
         this.tracks.push(...(data.songs as PlaylistTrack[]));
