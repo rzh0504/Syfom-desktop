@@ -54,7 +54,7 @@ export function newAlbums(_params?: NewAlbumsParams) {
  * - id - 专辑id
  * @param {number} id
  */
-export function albumDynamicDetail() {
+export function albumDynamicDetail(_id?: string | number) {
   return Promise.resolve({
     isSub: false,
     commentCount: 0,

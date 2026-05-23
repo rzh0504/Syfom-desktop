@@ -74,16 +74,47 @@
   </div>
 </template>
 
-<script>
-import { mapActions } from 'vuex';
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { getTrackDetail } from '@/api/track';
 import { search } from '@/api/others';
 import NProgress from 'nprogress';
+import type { Track, TrackId } from '@/types/music';
 
 import TrackList from '@/components/TrackList.vue';
 import CoverRow from '@/components/CoverRow.vue';
 
-export default {
+type SearchType = 'all' | 'tracks' | 'albums' | 'artists' | 'playlists';
+
+type SearchItem = {
+  id: TrackId;
+  name: string;
+  [key: string]: any;
+};
+
+type SearchResult = {
+  songs?: SearchItem[];
+  artists?: SearchItem[];
+  albums?: SearchItem[];
+  playlists?: SearchItem[];
+  [key: string]: any;
+};
+
+type SearchResponse =
+  | {
+      result?: SearchResult;
+      type: SearchType;
+    }
+  | undefined;
+
+type PlayerLike = {
+  appendTrackToPlayerList: (
+    track: Track | SearchItem | undefined,
+    play: boolean
+  ) => void;
+};
+
+export default defineComponent({
   name: 'Search',
   components: {
     TrackList,
@@ -92,18 +123,20 @@ export default {
   data() {
     return {
       show: false,
-      tracks: [],
-      artists: [],
-      albums: [],
-      playlists: [],
-      musicVideos: [],
+      tracks: [] as SearchItem[],
+      artists: [] as SearchItem[],
+      albums: [] as SearchItem[],
+      playlists: [] as SearchItem[],
+      musicVideos: [] as SearchItem[],
     };
   },
   computed: {
-    keywords() {
-      return this.$route.params.keywords ?? '';
+    keywords(): string {
+      const keywords = this.$route.params.keywords;
+      if (Array.isArray(keywords)) return keywords[0] || '';
+      return keywords ?? '';
     },
-    haveResult() {
+    haveResult(): boolean {
       return (
         this.tracks.length +
           this.artists.length +
@@ -114,7 +147,7 @@ export default {
     },
   },
   watch: {
-    keywords: function (newKeywords) {
+    keywords: function (newKeywords: string) {
       if (newKeywords.length === 0) return;
       this.getData();
     },
@@ -123,14 +156,17 @@ export default {
     this.getData();
   },
   methods: {
-    ...mapActions(['showToast']),
-    playTrackInSearchResult(id) {
-      let track = this.tracks.find(t => t.id === id);
-      this.$store.state.player.appendTrackToPlayerList(track, true);
+    showToast(text: string) {
+      return this.$store.dispatch('showToast', text);
     },
-    search(type = 'all') {
-      let showToast = this.showToast;
-      const typeTable = {
+    playTrackInSearchResult(id: TrackId): void {
+      const track = this.tracks.find(t => t.id === id);
+      const player = this.$store.state.player as PlayerLike;
+      player.appendTrackToPlayerList(track, true);
+    },
+    search(type: SearchType = 'all'): Promise<SearchResponse> {
+      const showToast = this.showToast;
+      const typeTable: Record<SearchType, number> = {
         all: 1018,
         tracks: 1,
         albums: 10,
@@ -146,39 +182,44 @@ export default {
           return { result: result.result, type };
         })
         .catch(err => {
-          showToast(err.response.data.msg || err.response.data.message);
+          showToast(
+            err.response?.data?.msg ||
+              err.response?.data?.message ||
+              String(err)
+          );
+          return undefined;
         });
     },
-    getData() {
+    getData(): void {
       setTimeout(() => {
         if (!this.show) NProgress.start();
       }, 1000);
       this.show = false;
 
-      const requestAll = requests => {
+      const requestAll = (requests: Array<Promise<SearchResponse>>) => {
         const keywords = this.keywords;
         Promise.all(requests).then(results => {
           if (keywords != this.keywords) return;
           results.map(result => {
+            if (!result) return;
             const searchType = result.type;
             if (result.result === undefined) return;
-            result = result.result;
+            const data = result.result;
             switch (searchType) {
               case 'all':
-                this.result = result;
                 break;
               case 'artists':
-                this.artists = result.artists ?? [];
+                this.artists = data.artists ?? [];
                 break;
               case 'albums':
-                this.albums = result.albums ?? [];
+                this.albums = data.albums ?? [];
                 break;
               case 'tracks':
-                this.tracks = result.songs ?? [];
+                this.tracks = data.songs ?? [];
                 this.getTracksDetail();
                 break;
               case 'playlists':
-                this.playlists = result.playlists ?? [];
+                this.playlists = data.playlists ?? [];
                 break;
             }
           });
@@ -197,15 +238,15 @@ export default {
       requestAll(requests);
       requestAll(requests2);
     },
-    getTracksDetail() {
+    getTracksDetail(): void {
       const trackIDs = this.tracks.map(t => t.id);
       if (trackIDs.length === 0) return;
       getTrackDetail(trackIDs.join(',')).then(result => {
-        this.tracks = result.songs;
+        this.tracks = result.songs as SearchItem[];
       });
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

@@ -63,49 +63,85 @@
   </div>
 </template>
 
-<script>
-import { mapState, mapMutations } from 'vuex';
+<script lang="ts">
+import { defineComponent } from 'vue';
 import NProgress from 'nprogress';
 import { topPlaylist, highQualityPlaylist, toplists } from '@/api/playlist';
 import { playlistCategories } from '@/utils/staticData';
 import { getRecommendPlayList } from '@/utils/playList';
+import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router';
+import type { TrackId } from '@/types/music';
 
 import ButtonTwoTone from '@/components/ButtonTwoTone.vue';
 import CoverRow from '@/components/CoverRow.vue';
 import SvgIcon from '@/components/SvgIcon.vue';
 
-export default {
+type PlaylistItem = {
+  id: TrackId;
+  name: string;
+  updateTime?: number;
+  [key: string]: any;
+};
+
+type SettingsState = {
+  enabledPlaylistCategories: string[];
+};
+
+type PlaylistCategory = {
+  name: string;
+  enable: boolean;
+  bigCat: string;
+};
+
+function getRouteCategory(route: RouteLocationNormalized): string {
+  const category = route.query.category;
+  if (Array.isArray(category)) return category[0] || '全部';
+  return category || '全部';
+}
+
+export default defineComponent({
   name: 'Explore',
   components: {
     CoverRow,
     ButtonTwoTone,
     SvgIcon,
   },
-  inject: ['restoreMainScrollPosition'],
-  beforeRouteUpdate(to, from, next) {
+  inject: {
+    restoreMainScrollPosition: {
+      default: () => {},
+    },
+  },
+  beforeRouteUpdate(
+    to: RouteLocationNormalized,
+    _from: RouteLocationNormalized,
+    next: NavigationGuardNext
+  ) {
     this.showLoadMoreButton = false;
     this.hasMore = true;
     this.playlists = [];
     this.offset = 1;
-    this.activeCategory = to.query.category;
+    this.activeCategory = getRouteCategory(to);
     this.getPlaylist();
     next();
   },
   data() {
     return {
       show: false,
-      playlists: [],
+      playlists: [] as PlaylistItem[],
       activeCategory: '全部',
       loadingMore: false,
       showLoadMoreButton: false,
       hasMore: true,
+      offset: 1,
       allBigCats: ['语种', '风格', '场景', '情感', '主题'],
       showCatOptions: false,
     };
   },
   computed: {
-    ...mapState(['settings']),
-    subText() {
+    settings(): SettingsState {
+      return this.$store.state.settings as SettingsState;
+    },
+    subText(): string {
       if (this.activeCategory === '排行榜') return 'updateFrequency';
       if (this.activeCategory === '推荐歌单') return 'copywriter';
       return 'none';
@@ -113,16 +149,18 @@ export default {
   },
   activated() {
     this.loadData();
-    this.restoreMainScrollPosition();
+    (this.restoreMainScrollPosition as () => void)();
   },
   methods: {
-    ...mapMutations(['togglePlaylistCategory']),
-    loadData() {
+    togglePlaylistCategory(name: string) {
+      this.$store.commit('togglePlaylistCategory', name);
+    },
+    loadData(): void {
       setTimeout(() => {
         if (!this.show) NProgress.start();
       }, 1000);
-      const queryCategory = this.$route.query.category;
-      if (queryCategory === undefined) {
+      const queryCategory = getRouteCategory(this.$route);
+      if (this.$route.query.category === undefined) {
         this.playlists = [];
         this.activeCategory = '全部';
       } else {
@@ -130,18 +168,18 @@ export default {
       }
       this.getPlaylist();
     },
-    goToCategory(Category) {
+    goToCategory(Category: string): void {
       this.showCatOptions = false;
       this.$router.push({ name: 'explore', query: { category: Category } });
     },
-    updatePlaylist(playlists) {
+    updatePlaylist(playlists: PlaylistItem[]): void {
       this.playlists.push(...playlists);
       this.loadingMore = false;
       this.showLoadMoreButton = true;
       NProgress.done();
       this.show = true;
     },
-    getPlaylist() {
+    getPlaylist(): Promise<void> | void {
       this.loadingMore = true;
       if (this.activeCategory === '推荐歌单') {
         return this.getRecommendPlayList();
@@ -154,29 +192,29 @@ export default {
       }
       return this.getTopPlayList();
     },
-    getRecommendPlayList() {
-      getRecommendPlayList(100, true).then(list => {
+    getRecommendPlayList(): Promise<void> {
+      return getRecommendPlayList(100, true).then(list => {
         this.playlists = [];
-        this.updatePlaylist(list);
+        this.updatePlaylist(list as PlaylistItem[]);
       });
     },
-    getHighQualityPlaylist() {
-      let playlists = this.playlists;
-      let before =
+    getHighQualityPlaylist(): Promise<void> {
+      const playlists = this.playlists;
+      const before =
         playlists.length !== 0 ? playlists[playlists.length - 1].updateTime : 0;
-      highQualityPlaylist({ limit: 50, before }).then(data => {
+      return highQualityPlaylist({ limit: 50, before }).then(data => {
         this.updatePlaylist(data.playlists);
         this.hasMore = data.more;
       });
     },
-    getTopLists() {
-      toplists().then(data => {
+    getTopLists(): Promise<void> {
+      return toplists().then(data => {
         this.playlists = [];
         this.updatePlaylist(data.list);
       });
     },
-    getTopPlayList() {
-      topPlaylist({
+    getTopPlayList(): Promise<void> {
+      return topPlaylist({
         cat: this.activeCategory,
         offset: this.playlists.length,
       }).then(data => {
@@ -184,14 +222,14 @@ export default {
         this.hasMore = data.more;
       });
     },
-    getCatsByBigCat(name) {
+    getCatsByBigCat(name: string): PlaylistCategory[] {
       return playlistCategories.filter(c => c.bigCat === name);
     },
-    toggleCat(name) {
+    toggleCat(name: string): void {
       this.togglePlaylistCategory(name);
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

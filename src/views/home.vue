@@ -98,9 +98,9 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import NProgress from 'nprogress';
-import { mapState } from 'vuex';
 import { isLooseLoggedIn as checkLooseLoggedIn } from '@/utils/auth';
 import { dailyShuffle } from '@/utils/dailyRandom';
 import {
@@ -110,48 +110,82 @@ import {
 } from '@/api/others';
 import CoverRow from '@/components/CoverRow.vue';
 import SvgIcon from '@/components/SvgIcon.vue';
+import type { Track, TrackId } from '@/types/music';
 
-function appendSizeParam(imageUrl = '', size = 1024) {
+type CatalogKind =
+  | 'newest-albums'
+  | 'recent-albums'
+  | 'random-artists'
+  | 'random-albums'
+  | 'frequent-albums';
+
+type CoverItem = {
+  id: TrackId;
+  name: string;
+  [key: string]: any;
+};
+
+type DataState = {
+  loginMode?: string;
+  user?: { userId?: TrackId };
+};
+
+type PlayerLike = {
+  replacePlaylist: (
+    trackIDs: TrackId[],
+    source: string,
+    sourceType: string,
+    currentTrackID: TrackId
+  ) => void;
+};
+
+function appendSizeParam(imageUrl = '', size = 1024): string {
   if (!imageUrl) return '';
   const separator = imageUrl.includes('?') ? '&' : '?';
   return `${imageUrl}${separator}param=${size}y${size}`;
 }
 
-export default {
+export default defineComponent({
   name: 'Home',
   components: { CoverRow, SvgIcon },
-  inject: ['restoreMainScrollPosition'],
+  inject: {
+    restoreMainScrollPosition: {
+      default: () => {},
+    },
+  },
   data() {
     return {
       show: false,
-      todayRecommendTracks: [],
-      newestAlbums: [],
-      recentAlbums: [],
-      randomArtists: [],
-      randomAlbums: [],
-      frequentAlbums: [],
+      todayRecommendTracks: [] as Track[],
+      newestAlbums: [] as CoverItem[],
+      recentAlbums: [] as CoverItem[],
+      randomArtists: [] as CoverItem[],
+      randomAlbums: [] as CoverItem[],
+      frequentAlbums: [] as CoverItem[],
     };
   },
   computed: {
-    ...mapState(['data']),
-    isLooseLoggedIn() {
+    data(): DataState {
+      return this.$store.state.data as DataState;
+    },
+    isLooseLoggedIn(): boolean {
       const loginMode = this.data?.loginMode;
       const userId = this.data?.user?.userId;
       void loginMode;
       void userId;
       return checkLooseLoggedIn();
     },
-    todayCoverUrl() {
+    todayCoverUrl(): string {
       const cover = this.todayRecommendTracks[0]?.al?.picUrl;
       return appendSizeParam(cover, 1024);
     },
   },
   activated() {
     this.loadData();
-    this.restoreMainScrollPosition();
+    (this.restoreMainScrollPosition as () => void)();
   },
   methods: {
-    loadData() {
+    loadData(): void {
       setTimeout(() => {
         if (!this.show) NProgress.start();
       }, 1000);
@@ -197,21 +231,22 @@ export default {
         this.show = true;
       });
     },
-    playTodayRecommend() {
+    playTodayRecommend(): void {
       if (this.todayRecommendTracks.length === 0) return;
       const trackIDs = this.todayRecommendTracks.map(track => track.id);
-      this.$store.state.player.replacePlaylist(
+      const player = this.$store.state.player as PlayerLike;
+      player.replacePlaylist(
         trackIDs,
         '/home/today-recommend',
         'url',
         trackIDs[0]
       );
     },
-    goToCatalog(kind) {
+    goToCatalog(kind: CatalogKind): void {
       this.$router.push({ name: 'homeCatalog', params: { kind } });
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

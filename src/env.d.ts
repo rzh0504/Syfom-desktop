@@ -27,5 +27,6 @@ declare global {
 declare module '@vue/runtime-core' {
   interface ComponentCustomProperties {
     $filters: typeof filters;
+    $copyText: (text: string) => Promise<string>;
   }
 }

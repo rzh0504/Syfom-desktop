@@ -25,7 +25,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import ModalAddTrackToPlaylist from './components/ModalAddTrackToPlaylist.vue';
 import ModalNewPlaylist from './components/ModalNewPlaylist.vue';
 import Scrollbar from './components/Scrollbar.vue';
@@ -35,9 +36,18 @@ import Toast from './components/Toast.vue';
 import { ipcRenderer } from './electron/ipcRenderer';
 import { isAccountLoggedIn, isLooseLoggedIn } from '@/utils/auth';
 import Lyrics from './views/lyrics.vue';
-import { mapState } from 'vuex';
 
-export default {
+type ScrollbarInstance = {
+  handleScroll: () => void;
+  restorePosition: () => void;
+};
+
+type PlayerLike = {
+  enabled?: boolean;
+  playOrPause: () => void;
+};
+
+export default defineComponent({
   name: 'App',
   components: {
     Navbar,
@@ -50,8 +60,12 @@ export default {
   },
   provide() {
     return {
-      restoreMainScrollPosition: () => this.$refs.scrollbar?.restorePosition(),
-      scrollMainTo: (...args) => this.$refs.main?.scrollTo(...args),
+      restoreMainScrollPosition: () =>
+        (
+          this.$refs.scrollbar as ScrollbarInstance | undefined
+        )?.restorePosition(),
+      scrollMainTo: (...args: Parameters<HTMLElement['scrollTo']>) =>
+        (this.$refs.main as HTMLElement | undefined)?.scrollTo(...args),
     };
   },
   data() {
@@ -69,17 +83,25 @@ export default {
     };
   },
   computed: {
-    ...mapState(['showLyrics', 'settings', 'player', 'enableScrolling']),
-    isAccountLoggedIn() {
+    showLyrics(): boolean {
+      return this.$store.state.showLyrics as boolean;
+    },
+    player(): PlayerLike {
+      return this.$store.state.player as PlayerLike;
+    },
+    enableScrolling(): boolean {
+      return this.$store.state.enableScrolling as boolean;
+    },
+    isAccountLoggedIn(): boolean {
       return isAccountLoggedIn();
     },
-    showPlayer() {
+    showPlayer(): boolean {
       return ['login', 'loginAccount'].includes(this.$route.name) === false;
     },
-    enablePlayer() {
+    enablePlayer(): boolean {
       return this.player.enabled;
     },
-    showNavbar() {
+    showNavbar(): boolean {
       return true;
     },
   },
@@ -89,15 +111,15 @@ export default {
     this.fetchData();
   },
   methods: {
-    handleKeydown(e) {
+    handleKeydown(e: KeyboardEvent) {
       if (e.code === 'Space') {
-        if (e.target.tagName === 'INPUT') return false;
+        if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return false;
         if (this.$route.name === 'mv') return false;
         e.preventDefault();
         this.player.playOrPause();
       }
     },
-    fetchData() {
+    fetchData(): void {
       if (!isLooseLoggedIn()) return;
       this.$store
         .dispatch('fetchLikedSongs')
@@ -108,11 +130,11 @@ export default {
         this.$store.dispatch('fetchLikedArtists');
       }
     },
-    handleScroll() {
-      this.$refs.scrollbar.handleScroll();
+    handleScroll(): void {
+      (this.$refs.scrollbar as ScrollbarInstance | undefined)?.handleScroll();
     },
   },
-};
+});
 </script>
 
 <style lang="scss">

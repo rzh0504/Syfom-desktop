@@ -5,6 +5,17 @@ type PlaylistParams = {
   limit?: number;
 };
 
+type HighQualityPlaylistParams = {
+  limit?: number;
+  before?: number;
+};
+
+type TopPlaylistParams = {
+  cat?: string;
+  limit?: number;
+  offset?: number;
+};
+
 type CreatePlaylistParams = {
   name: string;
   type?: number;
@@ -82,7 +93,7 @@ export function getPlaylistDetail(id: TrackId, _noCache?: boolean) {
  * @param {number=} params.limit
  * @param {number} params.before
  */
-export function highQualityPlaylist() {
+export function highQualityPlaylist(_params?: HighQualityPlaylistParams) {
   return getActiveProvider()
     .getPlaylistList()
     .then(playlists => ({
@@ -102,7 +113,7 @@ export function highQualityPlaylist() {
  * @param {string} params.cat
  * @param {number=} params.limit
  */
-export function topPlaylist() {
+export function topPlaylist(_params?: TopPlaylistParams) {
   return getActiveProvider()
     .getPlaylistList()
     .then(playlists => ({

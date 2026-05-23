@@ -23,8 +23,23 @@
   </div>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import { defineComponent } from 'vue';
+import type { RouteLocationNormalized, NavigationGuardNext } from 'vue-router';
+
+type ScrollPosition = {
+  scrollTop: number;
+  params: RouteLocationNormalized['params'];
+};
+
+type ParentInstance = {
+  userSelectNone?: boolean;
+  $refs: {
+    main?: HTMLElement;
+  };
+};
+
+export default defineComponent({
   name: 'Scrollbar',
   data() {
     return {
@@ -32,35 +47,36 @@ export default {
       thumbHeight: 0,
       active: false,
       show: false,
-      hideTimer: null,
+      hideTimer: null as ReturnType<typeof setTimeout> | null,
       isOnDrag: false,
       onDragClientY: 0,
       positions: {
         home: { scrollTop: 0, params: {} },
-      },
+      } as Record<string, ScrollPosition>,
     };
   },
   computed: {
-    thumbStyle() {
+    thumbStyle(): Record<string, string> {
       return {
         transform: `translateY(${this.top}px)`,
         height: `${this.thumbHeight}px`,
       };
     },
-    main() {
-      return this.$parent.$refs.main;
+    main(): HTMLElement | undefined {
+      return (this.$parent as ParentInstance | undefined)?.$refs.main;
     },
   },
 
   created() {
-    this.$router.beforeEach((to, from, next) => {
+    this.$router.beforeEach((_to, _from, next: NavigationGuardNext) => {
       this.show = false;
       next();
     });
   },
 
   methods: {
-    handleScroll() {
+    handleScroll(): void {
+      if (!this.main) return;
       const clintHeight = this.main.clientHeight - 128;
       const scrollHeight = this.main.scrollHeight - 128;
       const scrollTop = this.main.scrollTop;
@@ -79,25 +95,30 @@ export default {
 
       const route = this.$route;
       if (route.meta.savePosition) {
-        this.positions[route.name] = { scrollTop, params: route.params };
+        this.positions[String(route.name)] = {
+          scrollTop,
+          params: route.params,
+        };
       }
     },
-    handleMouseenter() {
+    handleMouseenter(): void {
       this.active = true;
     },
-    handleMouseleave() {
+    handleMouseleave(): void {
       this.active = false;
       this.setScrollbarHideTimeout();
     },
-    handleDragStart(e) {
+    handleDragStart(e: MouseEvent): void {
       this.onDragClientY = e.clientY;
       this.isOnDrag = true;
-      this.$parent.userSelectNone = true;
+      const parent = this.$parent as ParentInstance | undefined;
+      if (parent) parent.userSelectNone = true;
       document.addEventListener('mousemove', this.handleDragMove);
       document.addEventListener('mouseup', this.handleDragEnd);
     },
-    handleDragMove(e) {
+    handleDragMove(e: MouseEvent): void {
       if (!this.isOnDrag) return;
+      if (!this.main) return;
       const clintHeight = this.main.clientHeight - 128;
       const scrollHeight = this.main.scrollHeight - 128;
       const clientY = e.clientY;
@@ -110,13 +131,15 @@ export default {
       this.main.scrollBy(0, offset);
       this.onDragClientY = clientY;
     },
-    handleDragEnd() {
+    handleDragEnd(): void {
       this.isOnDrag = false;
-      this.$parent.userSelectNone = false;
+      const parent = this.$parent as ParentInstance | undefined;
+      if (parent) parent.userSelectNone = false;
       document.removeEventListener('mousemove', this.handleDragMove);
       document.removeEventListener('mouseup', this.handleDragEnd);
     },
-    handleClick(e) {
+    handleClick(e: MouseEvent): void {
+      if (!this.main) return;
       let scrollTop;
       if (e.clientY < this.top + 84) {
         scrollTop = -256;
@@ -128,26 +151,27 @@ export default {
         behavior: 'smooth',
       });
     },
-    setScrollbarHideTimeout() {
+    setScrollbarHideTimeout(): void {
       if (this.hideTimer !== null) clearTimeout(this.hideTimer);
       this.hideTimer = setTimeout(() => {
         if (!this.active) this.show = false;
         this.hideTimer = null;
       }, 4000);
     },
-    restorePosition() {
+    restorePosition(): void {
       const route = this.$route;
+      const routeName = String(route.name);
       if (
         !route.meta.savePosition ||
-        this.positions[route.name] === undefined ||
+        this.positions[routeName] === undefined ||
         this.main === undefined
       ) {
         return;
       }
-      this.main.scrollTo({ top: this.positions[route.name].scrollTop });
+      this.main.scrollTo({ top: this.positions[routeName].scrollTop });
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>
