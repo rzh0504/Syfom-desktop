@@ -106,4 +106,4 @@ Current phase: Migration complete; Vue SFC TypeScript conversion is in progress 
 - Removed the stale `win.publisherName` electron-builder field; electron-builder 26 rejects it during Windows packaging config validation.
 - GitHub publishing now targets `rzh0504/Syfome-desktop`.
 - Full GUI/runtime QA has been completed for login, library, liked songs, playback, settings, and packaging. Automated checks verify install, lint, typecheck, Vite build, Electron dev startup, and Windows packaging.
-- Converted low-risk Vue SFC scripts to TypeScript for `ButtonIcon`, `SvgIcon`, `ExplicitSymbol`, `Toast`, `ButtonTwoTone`, `ArtistsInLine`, `Modal`, `LinuxTitlebar`, and `lastfmCallback`. 33 Vue SFC scripts remain on plain `<script>` for gradual follow-up.
+- Converted low-risk Vue SFC scripts to TypeScript for `ButtonIcon`, `SvgIcon`, `ExplicitSymbol`, `Toast`, `ButtonTwoTone`, `ArtistsInLine`, `Modal`, `LinuxTitlebar`, `Cover`, `CoverRow`, `MvRow`, `Login`, `LoginUsername`, `ArtistMV`, `NewAlbum`, `DailyTracks`, and `lastfmCallback`. 25 Vue SFC scripts remain on plain `<script>` for gradual follow-up.

@@ -22,12 +22,13 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import NProgress from 'nprogress';
 
 import SvgIcon from '@/components/SvgIcon.vue';
 
-export default {
+export default defineComponent({
   name: 'Login',
   components: {
     SvgIcon,
@@ -41,11 +42,11 @@ export default {
     NProgress.done();
   },
   methods: {
-    goTo(path) {
+    goTo(path: string) {
       this.$router.push({ path: '/login/' + path });
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

@@ -3,7 +3,7 @@
     <h1>
       <img
         class="avatar"
-        :src="$filters.resizeImage(artist.img1v1Url, 1024)"
+        :src="resizeImage(artist.img1v1Url || '', 1024)"
         loading="lazy"
       />{{ artist.name }}'s Music Videos
     </h1>
@@ -16,40 +16,59 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
 import { artistMv, getArtist } from '@/api/artist';
 import NProgress from 'nprogress';
+import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router';
+import { resizeImage } from '@/utils/filters';
 
 import ButtonTwoTone from '@/components/ButtonTwoTone.vue';
 import MvRow from '@/components/MvRow.vue';
 
-export default {
+type Artist = {
+  img1v1Url?: string;
+  name?: string;
+};
+
+type MvItem = Record<string, any>;
+
+function routeId(route: RouteLocationNormalized): string | number {
+  const id = route.params.id;
+  return Array.isArray(id) ? id[0] : id;
+}
+
+export default defineComponent({
   name: 'ArtistMV',
   components: {
     MvRow,
     ButtonTwoTone,
   },
-  beforeRouteUpdate(to, from, next) {
-    this.id = to.params.id;
+  beforeRouteUpdate(
+    to: RouteLocationNormalized,
+    _from: RouteLocationNormalized,
+    next: NavigationGuardNext
+  ) {
+    this.id = routeId(to);
     this.loadData();
     next();
   },
   data() {
     return {
-      id: 0,
+      id: 0 as string | number,
       show: false,
       hasMore: true,
-      artist: {},
-      mvs: [],
+      artist: {} as Artist,
+      mvs: [] as MvItem[],
     };
   },
   created() {
-    this.id = this.$route.params.id;
+    this.id = routeId(this.$route);
     this.loadData();
   },
   activated() {
-    if (this.$route.params.id !== this.id) {
-      this.id = this.$route.params.id;
+    if (routeId(this.$route) !== this.id) {
+      this.id = routeId(this.$route);
       this.mvs = [];
       this.artist = {};
       this.show = false;
@@ -58,7 +77,8 @@ export default {
     }
   },
   methods: {
-    loadData() {
+    resizeImage,
+    loadData(): void {
       setTimeout(() => {
         if (!this.show) NProgress.start();
       }, 1000);
@@ -67,7 +87,7 @@ export default {
       });
       this.loadMVs();
     },
-    loadMVs() {
+    loadMVs(): void {
       artistMv({ id: this.id, limit: 100, offset: this.mvs.length }).then(
         data => {
           this.mvs.push(...data.mvs);
@@ -78,7 +98,7 @@ export default {
       );
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

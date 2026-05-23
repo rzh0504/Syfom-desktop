@@ -16,7 +16,7 @@
         <div v-if="showPlayCount" class="info">
           <span class="play-count"
             ><svg-icon icon-class="play" />{{
-              $filters.formatPlayCount(item.playCount)
+              formatPlayCount(item.playCount || 0)
             }}
           </span>
         </div>
@@ -42,19 +42,47 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import Cover from '@/components/Cover.vue';
 import ExplicitSymbol from '@/components/ExplicitSymbol.vue';
 import { resizeImageUrl } from '@/utils/image';
+import { formatPlayCount } from '@/utils/filters';
 
-export default {
+type Artist = {
+  id: string | number;
+  name: string;
+};
+
+type CoverRowItem = {
+  id: string | number;
+  name: string;
+  playCount?: number;
+  copywriter?: string;
+  description?: string;
+  updateFrequency?: string;
+  creator?: { nickname: string };
+  publishTime?: string | number | Date;
+  type?: string;
+  size?: number;
+  artist?: Artist;
+  artists?: Artist[];
+  privacy?: number;
+  mark?: number;
+  img1v1Url?: string;
+  picUrl?: string;
+  coverImgUrl?: string;
+};
+
+export default defineComponent({
   name: 'CoverRow',
   components: {
     Cover,
     ExplicitSymbol,
   },
   props: {
-    items: { type: Array, required: true },
+    items: { type: Array as PropType<CoverRowItem[]>, required: true },
     type: { type: String, required: true },
     subText: { type: String, default: 'none' },
     subTextFontSize: { type: String, default: '16px' },
@@ -64,7 +92,7 @@ export default {
     playButtonSize: { type: Number, default: 22 },
   },
   computed: {
-    rowStyles() {
+    rowStyles(): Record<string, string> {
       return {
         'grid-template-columns': `repeat(${this.columnNumber}, 1fr)`,
         gap: this.gap,
@@ -72,11 +100,12 @@ export default {
     },
   },
   methods: {
-    getSubText(item) {
+    formatPlayCount,
+    getSubText(item: CoverRowItem): string | number | undefined {
       if (this.subText === 'copywriter') return item.copywriter;
       if (this.subText === 'description') return item.description;
       if (this.subText === 'updateFrequency') return item.updateFrequency;
-      if (this.subText === 'creator') return 'by ' + item.creator.nickname;
+      if (this.subText === 'creator') return 'by ' + item.creator?.nickname;
       if (this.subText === 'releaseYear')
         return new Date(item.publishTime).getFullYear();
       if (this.subText === 'artist') {
@@ -95,24 +124,24 @@ export default {
       }
       if (this.subText === 'appleMusic') return 'by Apple Music';
     },
-    getSubTextArtist(item) {
+    getSubTextArtist(item: CoverRowItem): Artist | undefined {
       if (item.artist !== undefined) return item.artist;
       if (item.artists !== undefined) return item.artists[0];
       return undefined;
     },
-    isPrivacy(item) {
+    isPrivacy(item: CoverRowItem): boolean {
       return this.type === 'playlist' && item.privacy === 10;
     },
-    isExplicit(item) {
-      return this.type === 'album' && (item.mark & 1048576) === 1048576;
+    isExplicit(item: CoverRowItem): boolean {
+      return this.type === 'album' && ((item.mark || 0) & 1048576) === 1048576;
     },
-    getTitleLink(item) {
+    getTitleLink(item: CoverRowItem): string {
       return `/${this.type}/${item.id}`;
     },
-    getImageUrl(item) {
+    getImageUrl(item: CoverRowItem): string {
       if (item.img1v1Url) {
-        let img1v1ID = item.img1v1Url.split('/');
-        img1v1ID = img1v1ID[img1v1ID.length - 1];
+        const img1v1Parts = item.img1v1Url.split('/');
+        const img1v1ID = img1v1Parts[img1v1Parts.length - 1];
         if (img1v1ID === '5639395138885805.jpg') {
           return '/img/logos/yesplaymusic.png';
         }
@@ -122,7 +151,7 @@ export default {
       return resizeImageUrl(img, 512);
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

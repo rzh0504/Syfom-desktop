@@ -13,26 +13,34 @@
   </div>
 </template>
 
-<script>
-import { mapMutations, mapState } from 'vuex';
+<script lang="ts">
+import { defineComponent } from 'vue';
 import NProgress from 'nprogress';
 import { dailyRecommendTracks } from '@/api/playlist';
 
 import TrackList from '@/components/TrackList.vue';
 
-export default {
+type Track = Record<string, any>;
+
+export default defineComponent({
   name: 'DailyTracks',
   components: {
     TrackList,
   },
-  inject: ['scrollMainTo'],
+  inject: {
+    scrollMainTo: {
+      default: () => {},
+    },
+  },
   data() {
     return {
       show: false,
     };
   },
   computed: {
-    ...mapState(['player', 'data', 'dailyTracks']),
+    dailyTracks(): Track[] {
+      return this.$store.state.dailyTracks as Track[];
+    },
   },
   created() {
     if (this.dailyTracks.length === 0) {
@@ -43,10 +51,12 @@ export default {
     } else {
       this.show = true;
     }
-    this.scrollMainTo(0, 0);
+    (this.scrollMainTo as (x: number, y: number) => void)(0, 0);
   },
   methods: {
-    ...mapMutations(['updateDailyTracks']),
+    updateDailyTracks(dailyTracks: Track[]) {
+      this.$store.commit('updateDailyTracks', dailyTracks);
+    },
     loadDailyTracks() {
       dailyRecommendTracks().then(result => {
         this.updateDailyTracks(result.data.dailySongs);
@@ -55,7 +65,7 @@ export default {
       });
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

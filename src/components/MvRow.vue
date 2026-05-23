@@ -33,12 +33,34 @@
   </div>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+
+type MvItem = {
+  id?: string | number;
+  vid?: string | number;
+  imgurl16v9?: string;
+  cover?: string;
+  coverUrl?: string;
+  name?: string;
+  title?: string;
+  publishTime?: string;
+  artistId?: string | number;
+  artistName?: string;
+  creator?: Array<{ userId: string | number; userName: string }>;
+};
+
+type SubtitleArtist = {
+  id: string | number;
+  name: string;
+};
+
+export default defineComponent({
   name: 'CoverVideo',
   props: {
     mvs: {
-      type: Array,
+      type: Array as PropType<MvItem[]>,
       default: () => [],
     },
     subtitle: {
@@ -49,37 +71,38 @@ export default {
   },
   data() {
     return {
-      hoverVideoID: 0,
+      hoverVideoID: null as string | number | null,
     };
   },
   methods: {
-    goToMv(id) {
-      let query = {};
-      if (this.$parent.player !== undefined) {
-        query = { autoplay: this.$parent.player.playing };
+    goToMv(id: string | number | undefined) {
+      let query: Record<string, boolean> = {};
+      const parent = this.$parent as any;
+      if (parent.player !== undefined) {
+        query = { autoplay: parent.player.playing };
       }
       this.$router.push({ path: '/mv/' + id, query });
     },
-    getUrl(mv) {
+    getUrl(mv: MvItem): string {
       let url = mv.imgurl16v9 ?? mv.cover ?? mv.coverUrl;
-      return url.replace(/^http:/, 'https:') + '?param=464y260';
+      return (url || '').replace(/^http:/, 'https:') + '?param=464y260';
     },
-    getID(mv) {
+    getID(mv: MvItem): string | number | undefined {
       if (mv.id !== undefined) return mv.id;
       if (mv.vid !== undefined) return mv.vid;
     },
-    getTitle(mv) {
+    getTitle(mv: MvItem): string | undefined {
       if (mv.name !== undefined) return mv.name;
       if (mv.title !== undefined) return mv.title;
     },
-    getSubtitle(mv) {
+    getSubtitle(mv: MvItem): string | undefined {
       if (this.subtitle === 'artist') {
         return this.getSubtitleArtist(mv).name;
       } else if (this.subtitle === 'publishTime') {
         return mv.publishTime;
       }
     },
-    getSubtitleArtist(mv) {
+    getSubtitleArtist(mv: MvItem): SubtitleArtist {
       if (mv.artistName !== undefined) {
         return { id: mv.artistId, name: mv.artistName };
       }
@@ -89,7 +112,7 @@ export default {
       return { id: 0, name: 'null' };
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

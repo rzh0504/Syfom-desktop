@@ -122,7 +122,7 @@ export function toHttps(url: string): string {
   return url.replace(/^http:/, 'https:');
 }
 
-const filters = {
+export const filters = {
   formatTime,
   formatDate,
   formatAlbumType,

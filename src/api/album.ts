@@ -6,6 +6,12 @@ type LikeAlbumParams = {
   t: string | number;
 };
 
+type NewAlbumsParams = {
+  area?: string;
+  limit?: number;
+  offset?: number;
+};
+
 /**
  * 获取专辑内容
  * 说明 : 调用此接口 , 传入专辑 id, 可获得专辑内容
@@ -38,7 +44,7 @@ export function getAlbum(id: string | number) {
  * @param {number=} params.offset
  * @param {string} params.area
  */
-export function newAlbums() {
+export function newAlbums(_params?: NewAlbumsParams) {
   return Promise.resolve({ albums: [] });
 }
 

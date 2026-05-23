@@ -28,8 +28,13 @@
   </div>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import { defineComponent } from 'vue';
+import type { CSSProperties } from 'vue';
+
+type PlayableType = 'album' | 'playlist' | 'artist';
+
+export default defineComponent({
   props: {
     id: { type: [Number, String], required: true },
     type: { type: String, required: true },
@@ -49,8 +54,8 @@ export default {
     };
   },
   computed: {
-    imageStyles() {
-      let styles = {};
+    imageStyles(): CSSProperties {
+      const styles: CSSProperties = {};
       if (this.fixedSize !== 0) {
         styles.width = this.fixedSize + 'px';
         styles.height = this.fixedSize + 'px';
@@ -58,14 +63,14 @@ export default {
       if (this.type === 'artist') styles.borderRadius = '50%';
       return styles;
     },
-    playButtonStyles() {
-      let styles = {};
+    playButtonStyles(): CSSProperties {
+      const styles: CSSProperties = {};
       styles.width = this.playButtonSize + '%';
       styles.height = this.playButtonSize + '%';
       return styles;
     },
-    shadowStyles() {
-      let styles = {};
+    shadowStyles(): CSSProperties {
+      const styles: CSSProperties = {};
       styles.backgroundImage = `url(${this.imageUrl})`;
       if (this.type === 'artist') styles.borderRadius = '50%';
       return styles;
@@ -74,18 +79,18 @@ export default {
   methods: {
     play() {
       const player = this.$store.state.player;
-      const playActions = {
+      const playActions: Record<PlayableType, (id: string | number) => void> = {
         album: player.playAlbumByID,
         playlist: player.playPlaylistByID,
         artist: player.playArtistByID,
       };
-      playActions[this.type].bind(player)(this.id);
+      playActions[this.type as PlayableType]?.bind(player)(this.id);
     },
     goTo() {
       this.$router.push({ name: this.type, params: { id: this.id } });
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

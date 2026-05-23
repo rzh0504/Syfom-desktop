@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 import type { DefineComponent } from 'vue';
+import type { filters } from '@/utils/filters';
 
 declare module '*.vue' {
   const component: DefineComponent<{}, {}, any>;
@@ -20,5 +21,11 @@ declare global {
     require?: NodeJS.Require;
     resetApp?: () => string;
     yesplaymusic?: any;
+  }
+}
+
+declare module '@vue/runtime-core' {
+  interface ComponentCustomProperties {
+    $filters: typeof filters;
   }
 }

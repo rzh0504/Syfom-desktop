@@ -33,7 +33,7 @@
           >
             <img
               class="head"
-              :src="$filters.resizeImage(user.avatarUrl)"
+              :src="resizeImage(user.avatarUrl)"
               loading="lazy"
             />
             <div class="nickname">
@@ -52,16 +52,30 @@
   </div>
 </template>
 
-<script>
-import { mapMutations } from 'vuex';
+<script lang="ts">
+import { defineComponent } from 'vue';
 import NProgress from 'nprogress';
 import { search } from '@/api/others';
 import { userPlaylist } from '@/api/user';
 import { throttle } from '@/utils/common';
+import { resizeImage } from '@/utils/filters';
 
 import ButtonTwoTone from '@/components/ButtonTwoTone.vue';
 
-export default {
+type UserProfile = {
+  id?: string | number;
+  userId?: string | number;
+  nickname?: string;
+  avatarUrl?: string;
+};
+
+type UserSearchResult = {
+  result: {
+    userprofiles?: UserProfile[];
+  };
+};
+
+export default defineComponent({
   name: 'LoginUsername',
   components: {
     ButtonTwoTone,
@@ -69,23 +83,28 @@ export default {
   data() {
     return {
       keyword: '',
-      result: [],
-      activeUser: {},
+      result: [] as UserProfile[],
+      activeUser: {} as UserProfile,
     };
   },
   created() {
     NProgress.done();
   },
   methods: {
-    ...mapMutations(['updateData']),
+    resizeImage,
+    updateData(payload: { key: string; value: unknown }) {
+      this.$store.commit('updateData', payload);
+    },
     search() {
       if (!this.keyword) return;
       search({ keywords: this.keyword, limit: 9, type: 1002 }).then(data => {
-        this.result = data.result.userprofiles;
+        const result = (data as UserSearchResult).result.userprofiles || [];
+        this.result = result;
         this.activeUser = this.result[0];
       });
     },
     confirm() {
+      if (this.activeUser.userId === undefined) return;
       this.updateData({ key: 'user', value: this.activeUser });
       this.updateData({ key: 'loginMode', value: 'username' });
       userPlaylist({
@@ -103,7 +122,7 @@ export default {
       this.search();
     }, 500),
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>

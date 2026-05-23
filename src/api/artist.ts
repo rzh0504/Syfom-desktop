@@ -10,6 +10,12 @@ type FollowArtistParams = {
   t: string | number;
 };
 
+type ArtistMvParams = {
+  id: string | number;
+  limit?: number;
+  offset?: number;
+};
+
 /**
  * 获取歌手单曲
  * 说明 : 调用此接口 , 传入歌手 id, 可获得歌手部分信息和热门歌曲
@@ -54,7 +60,7 @@ export function toplistOfArtists() {
  * @param {number} params.offset
  * @param {number} params.limit
  */
-export function artistMv() {
+export function artistMv(_params?: ArtistMvParams) {
   return Promise.resolve({ mvs: [], hasMore: false });
 }
 
