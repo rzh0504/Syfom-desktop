@@ -70,17 +70,17 @@
         <div class="tabs">
           <div
             class="tab dropdown"
-            :class="{ active: currentTab === 'playlists' }"
-            @click="updateCurrentTab('playlists')"
+            :class="{ active: currentTab === 'librarySongs' }"
+            @click="updateCurrentTab('librarySongs')"
           >
             <span class="text">{{
               {
-                all: $t('contextMenu.allPlaylists'),
-                mine: $t('contextMenu.minePlaylists'),
-                liked: $t('contextMenu.likedPlaylists'),
-              }[playlistFilter]
+                addedAt: '添加日期',
+                lastPlayed: '最近播放',
+                playCount: '播放次数',
+              }[librarySongsSort]
             }}</span>
-            <span class="icon" @click.stop="openPlaylistTabMenu"
+            <span class="icon" @click.stop="openLibrarySongsSortMenu"
               ><svg-icon icon-class="dropdown"
             /></span>
           </div>
@@ -90,6 +90,13 @@
             @click="updateCurrentTab('librarySongs')"
           >
             歌曲
+          </div>
+          <div
+            class="tab"
+            :class="{ active: currentTab === 'playlists' }"
+            @click="updateCurrentTab('playlists')"
+          >
+            {{ $t('library.playlists') }}
           </div>
           <div
             class="tab"
@@ -133,7 +140,11 @@
       </div>
 
       <div v-show="currentTab === 'librarySongs'" class="library-songs-tab">
-        <TrackList :tracks="librarySongs" :column-number="1" type="tracklist" />
+        <TrackList
+          :tracks="sortedLibrarySongs"
+          :column-number="1"
+          type="tracklist"
+        />
         <div
           v-if="librarySongs.length === 0 && !librarySongsLoading"
           class="empty"
@@ -196,17 +207,17 @@
       </div>
     </div>
 
-    <ContextMenu ref="playlistTabMenu">
-      <div class="item" @click="changePlaylistFilter('all')">{{
-        $t('contextMenu.allPlaylists')
-      }}</div>
+    <ContextMenu ref="librarySongsSortMenu">
+      <div class="item" @click="changeLibrarySongsSort('addedAt')">
+        添加日期
+      </div>
       <hr />
-      <div class="item" @click="changePlaylistFilter('mine')">{{
-        $t('contextMenu.minePlaylists')
-      }}</div>
-      <div class="item" @click="changePlaylistFilter('liked')">{{
-        $t('contextMenu.likedPlaylists')
-      }}</div>
+      <div class="item" @click="changeLibrarySongsSort('lastPlayed')">
+        最近播放
+      </div>
+      <div class="item" @click="changeLibrarySongsSort('playCount')">
+        播放次数
+      </div>
     </ContextMenu>
   </div>
 </template>
@@ -228,7 +239,7 @@ import CoverRow from '@/components/CoverRow.vue';
 import SvgIcon from '@/components/SvgIcon.vue';
 import type { Track, TrackId } from '@/types/music';
 
-type PlaylistFilter = 'all' | 'mine' | 'liked';
+type LibrarySongsSort = 'addedAt' | 'lastPlayed' | 'playCount';
 type LibraryTab =
   | 'playlists'
   | 'librarySongs'
@@ -251,6 +262,21 @@ function extractLyricPart(rawLyric: string): string {
   return rawLyric.split(']').pop()?.trim() || '';
 }
 
+function getTimestamp(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const timestamp = new Date(value).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+  }
+  return 0;
+}
+
+function getLibrarySongSortValue(song: Track, sort: LibrarySongsSort): number {
+  if (sort === 'playCount') return Number(song.playCount || 0);
+  if (sort === 'lastPlayed') return getTimestamp(song.lastPlayed);
+  return getTimestamp(song.addedAt || song.created || song.starred);
+}
+
 export default defineComponent({
   name: 'Library',
   components: { SvgIcon, CoverRow, TrackList, ContextMenu },
@@ -263,6 +289,7 @@ export default defineComponent({
       likedPreviewTracks: [] as Track[],
       likedPreviewOffset: 0,
       currentTab: 'librarySongs' as LibraryTab,
+      librarySongsSort: 'addedAt' as LibrarySongsSort,
       playHistoryMode: 'week' as PlayHistoryMode,
       librarySongs: [] as Track[],
       librarySongsLoading: false,
@@ -295,18 +322,19 @@ export default defineComponent({
         .slice(startLyricLineIndex, startLyricLineIndex + lyricsToPick)
         .map(extractLyricPart);
     },
-    playlistFilter(): PlaylistFilter {
-      return this.data.libraryPlaylistFilter || 'all';
-    },
     filterPlaylists(): PlaylistLike[] {
-      const playlists = this.liked.playlists.slice(1) as PlaylistLike[];
-      const userId = this.data.user.userId;
-      if (this.playlistFilter === 'mine') {
-        return playlists.filter(p => p.creator?.userId === userId);
-      } else if (this.playlistFilter === 'liked') {
-        return playlists.filter(p => p.creator?.userId !== userId);
-      }
-      return playlists;
+      return this.liked.playlists.slice(1) as PlaylistLike[];
+    },
+    sortedLibrarySongs(): Track[] {
+      return this.librarySongs
+        .map((song, index) => ({ song, index }))
+        .sort((a, b) => {
+          const diff =
+            getLibrarySongSortValue(b.song, this.librarySongsSort) -
+            getLibrarySongSortValue(a.song, this.librarySongsSort);
+          return diff || a.index - b.index;
+        })
+        .map(({ song }) => song);
     },
     playHistoryList(): Track[] {
       if (this.show && this.playHistoryMode === 'week') {
@@ -336,7 +364,7 @@ export default defineComponent({
   },
   methods: {
     ...mapActions(['showToast']),
-    ...mapMutations(['updateModal', 'updateData']),
+    ...mapMutations(['updateModal']),
     loadData() {
       const loadLikedSongs = this.$store
         .dispatch('fetchLikedSongs')
@@ -514,13 +542,14 @@ export default defineComponent({
         value: true,
       });
     },
-    openPlaylistTabMenu(e: MouseEvent) {
-      (this.$refs.playlistTabMenu as ContextMenuInstance | undefined)?.openMenu(
-        e
-      );
+    openLibrarySongsSortMenu(e: MouseEvent) {
+      (
+        this.$refs.librarySongsSortMenu as ContextMenuInstance | undefined
+      )?.openMenu(e);
     },
-    changePlaylistFilter(type: PlaylistFilter) {
-      this.updateData({ key: 'libraryPlaylistFilter', value: type });
+    changeLibrarySongsSort(type: LibrarySongsSort) {
+      this.librarySongsSort = type;
+      this.currentTab = 'librarySongs';
       window.scrollTo({ top: 375, behavior: 'smooth' });
     },
   },

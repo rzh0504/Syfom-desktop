@@ -39,6 +39,10 @@ type NavidromeSong = {
   duration?: string | number;
   track?: number;
   discNumber?: number;
+  created?: string;
+  starred?: string | boolean;
+  played?: string;
+  playCount?: string | number;
 };
 
 type NavidromePlaylist = {
@@ -154,6 +158,11 @@ export function mapSong(raw: NavidromeSong = {}) {
     fee: 0,
     mark: 0,
     streamUrl: buildStreamUrl(raw.id),
+    created: raw.created,
+    addedAt: raw.created,
+    starred: raw.starred,
+    lastPlayed: raw.played,
+    playCount: Number(raw.playCount || 0),
     playable: true,
     reason: '',
     privilege: {
