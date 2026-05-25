@@ -9,36 +9,59 @@
     </h1>
     <div class="section-one">
       <div class="liked-songs" @click="goToLikedSongsList">
-        <div class="top">
-          <p>
+        <div class="content">
+          <div class="title-group">
+            <div class="icon"><svg-icon icon-class="heart-solid" /></div>
+            <div>
+              <div class="title-line">{{ $t('library.likedSongs') }}</div>
+              <div class="sub-title">
+                {{ liked.songs.length }} {{ $t('common.songs') }}
+              </div>
+            </div>
+          </div>
+          <div v-if="pickedLyric.length > 0" class="lyrics-preview">
             <span
               v-for="(line, index) in pickedLyric"
               v-show="line !== ''"
               :key="`${line}${index}`"
-              >{{ line }}<br
-            /></span>
-          </p>
-        </div>
-        <div class="bottom">
-          <div class="titles">
-            <div class="title">{{ $t('library.likedSongs') }}</div>
-            <div class="sub-title">
-              {{ liked.songs.length }} {{ $t('common.songs') }}
-            </div>
+            >
+              {{ line }}
+            </span>
           </div>
-          <button @click.stop="openPlayModeTabMenu">
-            <svg-icon icon-class="play" />
+        </div>
+        <button class="play-btn" @click.stop="playLikedSongs">
+          <svg-icon icon-class="play" />
+        </button>
+      </div>
+
+      <div class="liked-list">
+        <div class="list-head">
+          <span>我喜欢列表</span>
+          <button title="随机刷新" @click="refreshLikedPreviewTracks(true)">
+            <svg-icon icon-class="shuffle" />
           </button>
         </div>
-      </div>
-      <div class="songs">
-        <TrackList
-          :id="liked.playlists.length > 0 ? liked.playlists[0].id : 0"
-          :tracks="liked.songsWithDetails"
-          :column-number="3"
-          type="tracklist"
-          dbclick-track-func="playPlaylistByID"
-        />
+        <div v-if="likedPreviewTracks.length > 0" class="tracks">
+          <div
+            v-for="(track, index) in likedPreviewTracks"
+            :key="track.id"
+            class="track-item"
+            @dblclick="playLikedPreviewTrack(track.id)"
+          >
+            <span class="track-no">{{ formatTrackNo(index) }}</span>
+            <img :src="getTrackCover(track)" loading="lazy" />
+            <div class="track-info">
+              <div class="track-name">{{ track.name }}</div>
+              <div class="track-artist">{{ formatArtists(track) }}</div>
+            </div>
+            <button class="track-play" @click="playLikedPreviewTrack(track.id)">
+              <svg-icon icon-class="play" />
+            </button>
+          </div>
+        </div>
+        <div v-else class="placeholder">
+          当前喜欢列表还没有歌曲哦，快去添加吧！
+        </div>
       </div>
     </div>
 
@@ -185,21 +208,17 @@
         $t('contextMenu.likedPlaylists')
       }}</div>
     </ContextMenu>
-
-    <ContextMenu ref="playModeTabMenu">
-      <div class="item" @click="playLikedSongs">{{
-        $t('library.likedSongs')
-      }}</div>
-    </ContextMenu>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapActions, mapMutations, mapState } from 'vuex';
-import { randomNum, dailyTask } from '@/utils/common';
+import { dailyTask } from '@/utils/common';
+import { dailyShuffle } from '@/utils/dailyRandom';
 import { isAccountLoggedIn } from '@/utils/auth';
-import { getLyric, getLibrarySongs } from '@/api/track';
+import { getLibrarySongs, getLyric, getTrackDetail } from '@/api/track';
+import { resizeImageUrl } from '@/utils/image';
 import NProgress from 'nprogress';
 import locale from '@/locale';
 
@@ -228,12 +247,6 @@ type ContextMenuInstance = {
   openMenu: (e: MouseEvent) => void;
 };
 
-/**
- * Pick the lyric part from a string formed in `[timecode] lyric`.
- *
- * @param {string} rawLyric The raw lyric string formed in `[timecode] lyric`
- * @returns {string} The lyric part
- */
 function extractLyricPart(rawLyric: string): string {
   return rawLyric.split(']').pop()?.trim() || '';
 }
@@ -247,6 +260,8 @@ export default defineComponent({
       show: false,
       likedSongs: [] as Track[],
       lyric: undefined as string | undefined,
+      likedPreviewTracks: [] as Track[],
+      likedPreviewOffset: 0,
       currentTab: 'librarySongs' as LibraryTab,
       playHistoryMode: 'week' as PlayHistoryMode,
       librarySongs: [] as Track[],
@@ -257,13 +272,8 @@ export default defineComponent({
   },
   computed: {
     ...mapState(['data', 'liked']),
-    /**
-     * @returns {string[]}
-     */
     pickedLyric(): string[] {
       const lyric = this.lyric;
-
-      // Returns [] if we got no lyrics.
       if (!lyric) return [];
 
       const lyricLine = lyric
@@ -271,15 +281,16 @@ export default defineComponent({
         .filter(
           (line: string) => !line.includes('作词') && !line.includes('作曲')
         );
-
-      // Pick 3 or fewer lyrics based on the lyric lines.
-      const lyricsToPick = Math.min(lyricLine.length, 3);
-
-      // The upperBound of the lyric line to pick
+      const lyricsToPick = Math.min(lyricLine.length, 1);
       const randomUpperBound = lyricLine.length - lyricsToPick;
-      const startLyricLineIndex = randomNum(0, randomUpperBound - 1);
+      const availableStartIndexes = Array.from(
+        { length: randomUpperBound + 1 },
+        (_, index) => index
+      );
+      const startLyricLineIndex =
+        dailyShuffle(availableStartIndexes, `library-lyric-line:${lyric}`)[0] ||
+        0;
 
-      // Pick lyric lines to render.
       return lyricLine
         .slice(startLyricLineIndex, startLyricLineIndex + lyricsToPick)
         .map(extractLyricPart);
@@ -335,13 +346,16 @@ export default defineComponent({
       if (this.liked.songsWithDetails.length > 0) {
         NProgress.done();
         this.show = true;
-        loadLikedSongs.then(() => this.getRandomLyric());
-        this.getRandomLyric();
+        loadLikedSongs.then(() => this.getDailyLyric());
+        loadLikedSongs.then(() => this.refreshLikedPreviewTracks());
+        this.getDailyLyric();
+        this.refreshLikedPreviewTracks();
       } else {
         loadLikedSongs.then(() => {
           NProgress.done();
           this.show = true;
-          this.getRandomLyric();
+          this.getDailyLyric();
+          this.refreshLikedPreviewTracks();
         });
       }
       this.$store.dispatch('fetchLikedAlbums');
@@ -402,6 +416,56 @@ export default defineComponent({
         true
       );
     },
+    playLikedPreviewTrack(trackId: TrackId) {
+      this.$store.state.player.replacePlaylist(
+        this.liked.songs,
+        this.data.likedSongPlaylistID || 'starred',
+        'playlist',
+        trackId
+      );
+    },
+    refreshLikedPreviewTracks(nextPage = false) {
+      const likedSongIds = this.liked.songs as TrackId[];
+      if (likedSongIds.length === 0) {
+        this.likedPreviewTracks = [];
+        return;
+      }
+
+      const pageSize = 4;
+      if (nextPage) {
+        this.likedPreviewOffset =
+          (this.likedPreviewOffset + pageSize) % likedSongIds.length;
+      }
+
+      const shuffledIds = dailyShuffle(
+        likedSongIds,
+        `library-liked-preview:${this.data.user?.userId || 'local'}`
+      );
+      if (this.likedPreviewOffset >= shuffledIds.length) {
+        this.likedPreviewOffset = 0;
+      }
+
+      const ids = shuffledIds.slice(
+        this.likedPreviewOffset,
+        this.likedPreviewOffset + pageSize
+      );
+
+      getTrackDetail(ids.join(',')).then(({ songs }) => {
+        this.likedPreviewTracks = songs || [];
+      });
+    },
+    formatArtists(track: Track): string {
+      return (track.ar || track.artists || [])
+        .map(artist => artist.name)
+        .filter(Boolean)
+        .join(' / ');
+    },
+    getTrackCover(track: Track): string {
+      return resizeImageUrl(track.al?.picUrl || track.album?.picUrl || '', 96);
+    },
+    formatTrackNo(index: number | string): number {
+      return Number(index) + 1;
+    },
     updateCurrentTab(tab: LibraryTab) {
       if (
         !isAccountLoggedIn() &&
@@ -419,11 +483,16 @@ export default defineComponent({
     goToLikedSongsList() {
       this.$router.push({ path: '/library/liked-songs' });
     },
-    getRandomLyric() {
+    getDailyLyric() {
       if (this.liked.songs.length === 0) return;
-      getLyric(
-        this.liked.songs[randomNum(0, this.liked.songs.length - 1)]
-      ).then(data => {
+      const likedSongIds = this.liked.songs as TrackId[];
+      const dailySongId = dailyShuffle(
+        likedSongIds,
+        `library-lyric-song:${this.data.user?.userId || 'local'}`
+      )[0];
+      if (!dailySongId) return;
+
+      getLyric(dailySongId).then(data => {
         if (data.lrc !== undefined) {
           const isInstrumental = data.lrc.lyric
             .split('\n')
@@ -447,11 +516,6 @@ export default defineComponent({
     },
     openPlaylistTabMenu(e: MouseEvent) {
       (this.$refs.playlistTabMenu as ContextMenuInstance | undefined)?.openMenu(
-        e
-      );
-    },
-    openPlayModeTabMenu(e: MouseEvent) {
-      (this.$refs.playModeTabMenu as ContextMenuInstance | undefined)?.openMenu(
         e
       );
     },
@@ -479,84 +543,253 @@ h1 {
 }
 
 .section-one {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(240px, 0.78fr) minmax(360px, 1.22fr);
+  gap: 18px;
+  align-items: stretch;
   margin-top: 24px;
-  .songs {
-    flex: 7;
-    margin-top: 8px;
-    margin-left: 36px;
-    overflow: hidden;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
   }
 }
 
 .liked-songs {
-  flex: 3;
-  margin-top: 8px;
+  position: relative;
+  min-height: 164px;
   cursor: pointer;
-  border-radius: 16px;
-  padding: 18px 24px;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.4s;
-  box-sizing: border-box;
-
+  border-radius: 14px;
+  overflow: hidden;
   background: var(--color-primary-bg);
+  border: 1px solid var(--color-secondary-bg);
 
-  .bottom {
+  .content {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    padding: 22px;
+    color: var(--color-text);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .title-group {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .icon {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 10px;
+    background: var(--color-secondary-bg);
+    color: var(--color-primary);
+    margin-right: 12px;
+    .svg-icon {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  .title-line {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .sub-title {
+    margin-top: 5px;
+    font-size: 14px;
+    line-height: 1.5;
+    opacity: 0.68;
+  }
+
+  .lyrics-preview {
+    position: absolute;
+    left: 22px;
+    right: 72px;
+    bottom: 75px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+    color: var(--color-primary);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.45;
+    opacity: 0.82;
+
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .play-btn {
+    position: absolute;
+    right: 18px;
+    bottom: 18px;
+    z-index: 1;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: var(--color-primary);
+    background: var(--color-secondary-bg);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.2s;
+    .svg-icon {
+      width: 16px;
+      height: 16px;
+      margin-left: 2px;
+    }
+    &:hover {
+      transform: translateY(-1px);
+    }
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+}
+
+.liked-list {
+  min-height: 164px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--color-secondary-bg);
+  color: var(--color-text);
+
+  .list-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: var(--color-primary);
-
-    .title {
-      font-size: 24px;
-      font-weight: 700;
-    }
-    .sub-title {
-      font-size: 15px;
-      margin-top: 2px;
-    }
+    margin-bottom: 10px;
+    font-size: 18px;
+    font-weight: 700;
 
     button {
-      margin-bottom: 2px;
+      width: 30px;
+      height: 30px;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 44px;
-      width: 44px;
-      background: var(--color-primary);
-      border-radius: 50%;
+      border-radius: 999px;
+      background: var(--color-primary-bg);
+      color: var(--color-primary);
       transition: 0.2s;
-      box-shadow: 0 6px 12px -4px rgba(0, 0, 0, 0.2);
-      cursor: default;
 
       .svg-icon {
-        color: var(--color-primary-bg);
-        margin-left: 4px;
-        height: 16px;
-        width: 16px;
+        width: 14px;
+        height: 14px;
       }
+
       &:hover {
-        transform: scale(1.06);
-        box-shadow: 0 6px 12px -4px rgba(0, 0, 0, 0.4);
-      }
-      &:active {
-        transform: scale(0.94);
+        transform: translateY(-1px);
       }
     }
   }
 
-  .top {
-    flex: 1;
-    display: flex;
-    flex-wrap: wrap;
-    font-size: 14px;
-    opacity: 0.88;
-    color: var(--color-primary);
-    p {
-      margin-top: 2px;
+  .tracks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 12px;
+
+    @media (max-width: 1100px) {
+      grid-template-columns: 1fr;
     }
   }
+
+  .track-item {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding: 7px;
+    border-radius: 10px;
+    transition: 0.2s;
+
+    &:hover {
+      background: var(--color-primary-bg);
+
+      .track-play {
+        opacity: 1;
+      }
+    }
+
+    img {
+      width: 36px;
+      height: 36px;
+      margin-right: 10px;
+      border-radius: 7px;
+      object-fit: cover;
+    }
+  }
+
+  .track-no {
+    width: 20px;
+    margin-right: 8px;
+    text-align: center;
+    font-size: 12px;
+    opacity: 0.46;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .track-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .track-name,
+  .track-artist {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .track-name {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .track-artist {
+    margin-top: 2px;
+    font-size: 12px;
+    opacity: 0.6;
+  }
+
+  .track-play {
+    width: 30px;
+    height: 30px;
+    margin-left: 8px;
+    border-radius: 50%;
+    color: var(--color-primary);
+    opacity: 0;
+    transition: 0.2s;
+
+    .svg-icon {
+      width: 12px;
+      height: 12px;
+      margin-left: 2px;
+    }
+
+    @media (max-width: 900px) {
+      opacity: 1;
+    }
+  }
+}
+
+.placeholder {
+  color: var(--color-text);
+  opacity: 0.6;
+  font-size: 14px;
+  margin-top: -8px;
 }
 
 .section-two {

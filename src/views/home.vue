@@ -7,22 +7,46 @@
     </div>
 
     <template v-if="isLooseLoggedIn">
-      <div class="first-row today-recommend" @click="playTodayRecommend">
-        <img
-          v-if="todayCoverUrl"
-          :src="todayCoverUrl"
-          class="bg"
-          loading="lazy"
-        />
-        <div class="mask"></div>
-        <div class="content">
-          <div class="icon"><svg-icon icon-class="fm" /></div>
-          <div class="title-line">今日推荐</div>
-          <div class="sub">随机播放服务器音乐，快速开始今天的听歌旅程</div>
+      <div class="first-row today-recommend-section">
+        <div class="today-recommend" @click="playTodayRecommend()">
+          <div class="content">
+            <div class="title-group">
+              <div class="icon"><svg-icon icon-class="fm" /></div>
+              <div>
+                <div class="title-line">今日推荐</div>
+              </div>
+            </div>
+          </div>
+          <button class="play-btn" @click.stop="playTodayRecommend()">
+            <svg-icon icon-class="play" />
+          </button>
         </div>
-        <button class="play-btn" @click.stop="playTodayRecommend">
-          <svg-icon icon-class="play" />
-        </button>
+
+        <div class="recommend-list">
+          <div class="list-head">
+            <span>推荐列表</span>
+            <button @click="playTodayRecommend()">播放全部</button>
+          </div>
+          <div v-if="recommendPreviewTracks.length > 0" class="tracks">
+            <div
+              v-for="(track, index) in recommendPreviewTracks"
+              :key="track.id"
+              class="track-item"
+              @dblclick="playTodayRecommend(track.id)"
+            >
+              <span class="track-no">{{ index + 1 }}</span>
+              <img :src="getTrackCover(track)" loading="lazy" />
+              <div class="track-info">
+                <div class="track-name">{{ track.name }}</div>
+                <div class="track-artist">{{ formatArtists(track) }}</div>
+              </div>
+              <button class="track-play" @click="playTodayRecommend(track.id)">
+                <svg-icon icon-class="play" />
+              </button>
+            </div>
+          </div>
+          <div v-else class="placeholder">暂无推荐</div>
+        </div>
       </div>
 
       <div class="index-row">
@@ -103,6 +127,7 @@ import { defineComponent } from 'vue';
 import NProgress from 'nprogress';
 import { isLooseLoggedIn as checkLooseLoggedIn } from '@/utils/auth';
 import { dailyShuffle } from '@/utils/dailyRandom';
+import { resizeImageUrl } from '@/utils/image';
 import {
   homeAlbumsByType,
   homeAllArtists,
@@ -139,12 +164,6 @@ type PlayerLike = {
   ) => void;
 };
 
-function appendSizeParam(imageUrl = '', size = 1024): string {
-  if (!imageUrl) return '';
-  const separator = imageUrl.includes('?') ? '&' : '?';
-  return `${imageUrl}${separator}param=${size}y${size}`;
-}
-
 export default defineComponent({
   name: 'Home',
   components: { CoverRow, SvgIcon },
@@ -175,9 +194,8 @@ export default defineComponent({
       void userId;
       return checkLooseLoggedIn();
     },
-    todayCoverUrl(): string {
-      const cover = this.todayRecommendTracks[0]?.al?.picUrl;
-      return appendSizeParam(cover, 1024);
+    recommendPreviewTracks(): Track[] {
+      return this.todayRecommendTracks.slice(0, 6);
     },
   },
   activated() {
@@ -231,16 +249,18 @@ export default defineComponent({
         this.show = true;
       });
     },
-    playTodayRecommend(): void {
+    playTodayRecommend(trackId?: TrackId): void {
       if (this.todayRecommendTracks.length === 0) return;
       const trackIDs = this.todayRecommendTracks.map(track => track.id);
+      const currentTrackID = trackId || trackIDs[0];
       const player = this.$store.state.player as PlayerLike;
-      player.replacePlaylist(
-        trackIDs,
-        '/home/today-recommend',
-        'url',
-        trackIDs[0]
-      );
+      player.replacePlaylist(trackIDs, '/', 'url', currentTrackID);
+    },
+    formatArtists(track: Track): string {
+      return (track.ar || []).map(artist => artist.name).join(' / ');
+    },
+    getTrackCover(track: Track): string {
+      return resizeImageUrl(track.al?.picUrl || track.album?.picUrl || '', 96);
     },
     goToCatalog(kind: CatalogKind): void {
       this.$router.push({ name: 'homeCatalog', params: { kind } });
@@ -278,55 +298,53 @@ export default defineComponent({
   }
 }
 
+.today-recommend-section {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.78fr) minmax(360px, 1.22fr);
+  gap: 18px;
+  align-items: stretch;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
 .today-recommend {
   position: relative;
-  height: 212px;
+  min-height: 164px;
   border-radius: 14px;
   overflow: hidden;
   background: var(--color-primary-bg);
   cursor: pointer;
   border: 1px solid var(--color-secondary-bg);
 
-  .bg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    filter: saturate(0.92);
-  }
-
-  .mask {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.55),
-      rgba(0, 0, 0, 0.16)
-    );
-  }
-
   .content {
     position: relative;
     z-index: 1;
     height: 100%;
-    width: min(480px, 80%);
-    padding: 28px;
-    color: #fff;
+    padding: 22px;
+    color: var(--color-text);
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
+  }
+
+  .title-group {
+    display: flex;
+    align-items: flex-start;
   }
 
   .icon {
     width: 36px;
     height: 36px;
+    flex: 0 0 36px;
     display: flex;
     justify-content: center;
     align-items: center;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.14);
-    margin-bottom: 14px;
+    background: var(--color-secondary-bg);
+    color: var(--color-primary);
+    margin-right: 12px;
     .svg-icon {
       width: 20px;
       height: 20px;
@@ -334,28 +352,43 @@ export default defineComponent({
   }
 
   .title-line {
-    font-size: 34px;
+    font-size: 28px;
     font-weight: 700;
     letter-spacing: 0.02em;
   }
 
   .sub {
-    margin-top: 8px;
+    margin-top: 5px;
     font-size: 14px;
-    opacity: 0.88;
+    line-height: 1.5;
+    opacity: 0.68;
+  }
+
+  .daily-lyric {
+    position: absolute;
+    left: 22px;
+    right: 72px;
+    bottom: 22px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.5;
+    opacity: 0.82;
   }
 
   .play-btn {
     position: absolute;
-    right: 24px;
-    bottom: 24px;
+    right: 18px;
+    bottom: 18px;
     z-index: 1;
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    color: #fff;
-    background: rgba(255, 255, 255, 0.16);
-    border: 1px solid rgba(255, 255, 255, 0.24);
+    color: var(--color-primary);
+    background: var(--color-secondary-bg);
+    border: 1px solid rgba(0, 0, 0, 0.04);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -366,10 +399,128 @@ export default defineComponent({
       margin-left: 2px;
     }
     &:hover {
-      background: rgba(255, 255, 255, 0.28);
+      transform: translateY(-1px);
     }
     &:active {
       transform: scale(0.95);
+    }
+  }
+}
+
+.recommend-list {
+  min-height: 164px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--color-secondary-bg);
+  color: var(--color-text);
+
+  .list-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 18px;
+    font-weight: 700;
+
+    button {
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--color-primary-bg);
+      color: var(--color-primary);
+      font-size: 12px;
+      font-weight: 600;
+      transition: 0.2s;
+
+      &:hover {
+        transform: translateY(-1px);
+      }
+    }
+  }
+
+  .tracks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 12px;
+
+    @media (max-width: 1100px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .track-item {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding: 7px;
+    border-radius: 10px;
+    transition: 0.2s;
+
+    &:hover {
+      background: var(--color-primary-bg);
+
+      .track-play {
+        opacity: 1;
+      }
+    }
+
+    img {
+      width: 36px;
+      height: 36px;
+      margin-right: 10px;
+      border-radius: 7px;
+      object-fit: cover;
+    }
+  }
+
+  .track-no {
+    width: 20px;
+    margin-right: 8px;
+    text-align: center;
+    font-size: 12px;
+    opacity: 0.46;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .track-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .track-name,
+  .track-artist {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .track-name {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .track-artist {
+    margin-top: 2px;
+    font-size: 12px;
+    opacity: 0.6;
+  }
+
+  .track-play {
+    width: 30px;
+    height: 30px;
+    margin-left: 8px;
+    border-radius: 50%;
+    color: var(--color-primary);
+    opacity: 0;
+    transition: 0.2s;
+
+    .svg-icon {
+      width: 12px;
+      height: 12px;
+      margin-left: 2px;
+    }
+
+    @media (max-width: 900px) {
+      opacity: 1;
     }
   }
 }
