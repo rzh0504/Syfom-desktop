@@ -151,7 +151,7 @@
         >
           暂未读取到歌曲，请检查媒体库扫描或索引状态。
         </div>
-        <div class="load-more">
+        <div ref="librarySongsLoadMoreTrigger" class="load-more">
           <button
             v-if="librarySongsHasMore"
             class="load-more-button"
@@ -170,6 +170,16 @@
           sub-text="artist"
           :show-play-button="true"
         />
+        <div ref="albumsLoadMoreTrigger" class="load-more">
+          <button
+            v-if="libraryAlbumsHasMore"
+            class="load-more-button"
+            :disabled="libraryAlbumsLoading"
+            @click="loadLibraryAlbums()"
+          >
+            {{ libraryAlbumsLoading ? '加载中...' : '加载更多' }}
+          </button>
+        </div>
       </div>
 
       <div v-show="currentTab === 'artists'">
@@ -178,6 +188,16 @@
           type="artist"
           :show-play-button="true"
         />
+        <div ref="artistsLoadMoreTrigger" class="load-more">
+          <button
+            v-if="libraryArtistsHasMore"
+            class="load-more-button"
+            :disabled="libraryArtistsLoading"
+            @click="loadLibraryArtists()"
+          >
+            {{ libraryArtistsLoading ? '加载中...' : '加载更多' }}
+          </button>
+        </div>
       </div>
 
       <div v-show="currentTab === 'playHistory'">
@@ -247,6 +267,10 @@ type LibraryTab =
   | 'artists'
   | 'playHistory';
 type PlayHistoryMode = 'week' | 'all';
+type PagedFetchResult<T = unknown> = {
+  data?: T[];
+  hasMore?: boolean;
+};
 
 type PlaylistLike = {
   id?: TrackId;
@@ -295,6 +319,13 @@ export default defineComponent({
       librarySongsLoading: false,
       librarySongsHasMore: true,
       librarySongsOffset: 0,
+      libraryAlbumsLoading: false,
+      libraryAlbumsHasMore: true,
+      libraryAlbumsOffset: 0,
+      libraryArtistsLoading: false,
+      libraryArtistsHasMore: true,
+      libraryArtistsOffset: 0,
+      loadMoreObserver: undefined as IntersectionObserver | undefined,
     };
   },
   computed: {
@@ -360,7 +391,14 @@ export default defineComponent({
   activated() {
     this.restoreMainScrollPosition();
     this.loadData();
+    this.updateLoadMoreObserver();
     dailyTask();
+  },
+  deactivated() {
+    this.loadMoreObserver?.disconnect();
+  },
+  beforeUnmount() {
+    this.loadMoreObserver?.disconnect();
   },
   methods: {
     ...mapActions(['showToast']),
@@ -386,8 +424,6 @@ export default defineComponent({
           this.refreshLikedPreviewTracks();
         });
       }
-      this.$store.dispatch('fetchLikedAlbums');
-      this.$store.dispatch('fetchLikedArtists');
       this.$store.dispatch('fetchPlayHistory');
       if (this.librarySongs.length === 0) {
         this.loadLibrarySongs(true);
@@ -435,6 +471,80 @@ export default defineComponent({
         })
         .finally(() => {
           this.librarySongsLoading = false;
+          this.updateLoadMoreObserver();
+        });
+    },
+    loadLibraryAlbums(reset = false) {
+      if (this.libraryAlbumsLoading || (!reset && !this.libraryAlbumsHasMore)) {
+        return;
+      }
+
+      const pageSize = 50;
+      const nextOffset = reset ? 0 : this.libraryAlbumsOffset;
+      if (reset) {
+        this.libraryAlbumsHasMore = true;
+        this.libraryAlbumsOffset = 0;
+      }
+
+      this.libraryAlbumsLoading = true;
+      return this.$store
+        .dispatch('fetchLikedAlbums', {
+          limit: pageSize,
+          offset: nextOffset,
+          reset,
+        })
+        .then((result: PagedFetchResult) => {
+          const count = result?.data?.length || 0;
+          this.libraryAlbumsOffset = reset
+            ? this.liked.albums.length
+            : this.libraryAlbumsOffset + count;
+          this.libraryAlbumsHasMore = Boolean(result?.hasMore);
+        })
+        .catch((error: Error) => {
+          this.showToast(`读取专辑失败：${error.message || error}`);
+          this.libraryAlbumsHasMore = false;
+        })
+        .finally(() => {
+          this.libraryAlbumsLoading = false;
+          this.updateLoadMoreObserver();
+        });
+    },
+    loadLibraryArtists(reset = false) {
+      if (
+        this.libraryArtistsLoading ||
+        (!reset && !this.libraryArtistsHasMore)
+      ) {
+        return;
+      }
+
+      const pageSize = 50;
+      const nextOffset = reset ? 0 : this.libraryArtistsOffset;
+      if (reset) {
+        this.libraryArtistsHasMore = true;
+        this.libraryArtistsOffset = 0;
+      }
+
+      this.libraryArtistsLoading = true;
+      return this.$store
+        .dispatch('fetchLikedArtists', {
+          limit: pageSize,
+          offset: nextOffset,
+          reset,
+        })
+        .then((result: PagedFetchResult) => {
+          const count = result?.data?.length || 0;
+          this.libraryArtistsOffset = reset
+            ? this.liked.artists.length
+            : this.libraryArtistsOffset + count;
+          this.libraryArtistsHasMore = Boolean(result?.hasMore);
+        })
+        .catch((error: Error) => {
+          this.showToast(`读取艺人失败：${error.message || error}`);
+          this.libraryArtistsHasMore = false;
+        })
+        .finally(() => {
+          this.libraryArtistsLoading = false;
+          this.updateLoadMoreObserver();
         });
     },
     playLikedSongs() {
@@ -505,8 +615,13 @@ export default defineComponent({
       this.currentTab = tab;
       if (tab === 'librarySongs' && this.librarySongs.length === 0) {
         this.loadLibrarySongs(true);
+      } else if (tab === 'albums' && this.liked.albums.length === 0) {
+        this.loadLibraryAlbums(true);
+      } else if (tab === 'artists' && this.liked.artists.length === 0) {
+        this.loadLibraryArtists(true);
       }
       this.scrollMainTo({ top: 375, behavior: 'smooth' });
+      this.updateLoadMoreObserver();
     },
     goToLikedSongsList() {
       this.$router.push({ path: '/library/liked-songs' });
@@ -551,6 +666,43 @@ export default defineComponent({
       this.librarySongsSort = type;
       this.currentTab = 'librarySongs';
       window.scrollTo({ top: 375, behavior: 'smooth' });
+      this.updateLoadMoreObserver();
+    },
+    updateLoadMoreObserver() {
+      this.$nextTick(() => {
+        this.loadMoreObserver?.disconnect();
+
+        let target: Element | undefined;
+        if (this.currentTab === 'librarySongs' && this.librarySongsHasMore) {
+          target = this.$refs.librarySongsLoadMoreTrigger as
+            | Element
+            | undefined;
+        } else if (this.currentTab === 'albums' && this.libraryAlbumsHasMore) {
+          target = this.$refs.albumsLoadMoreTrigger as Element | undefined;
+        } else if (
+          this.currentTab === 'artists' &&
+          this.libraryArtistsHasMore
+        ) {
+          target = this.$refs.artistsLoadMoreTrigger as Element | undefined;
+        }
+
+        if (!target) return;
+
+        this.loadMoreObserver = new IntersectionObserver(
+          entries => {
+            if (!entries.some(entry => entry.isIntersecting)) return;
+            if (this.currentTab === 'librarySongs') {
+              this.loadLibrarySongs();
+            } else if (this.currentTab === 'albums') {
+              this.loadLibraryAlbums();
+            } else if (this.currentTab === 'artists') {
+              this.loadLibraryArtists();
+            }
+          },
+          { rootMargin: '240px 0px' }
+        );
+        this.loadMoreObserver.observe(target);
+      });
     },
   },
 });
@@ -826,29 +978,27 @@ h1 {
   min-height: calc(100vh - 182px);
 }
 
-.library-songs-tab {
-  .empty {
-    margin-top: 18px;
-    color: var(--color-text);
-    opacity: 0.68;
-  }
+.library-songs-tab .empty {
+  margin-top: 18px;
+  color: var(--color-text);
+  opacity: 0.68;
+}
 
-  .load-more {
-    margin-top: 16px;
-    display: flex;
-    justify-content: center;
-  }
+.load-more {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
 
-  .load-more-button {
-    padding: 8px 14px;
-    border-radius: 8px;
-    color: var(--color-primary);
-    background: var(--color-primary-bg);
-    font-weight: 600;
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+.load-more-button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+  font-weight: 600;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }
 
