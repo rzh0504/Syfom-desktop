@@ -166,7 +166,6 @@ export default {
       text: 'Show Lyrics Background',
       off: 'Off',
       on: 'On',
-      dynamic: 'Dynamic (High GPU usage)',
     },
     closeAppOption: {
       text: 'Close App...',

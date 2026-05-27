@@ -6,14 +6,8 @@
       :data-theme="theme"
     >
       <div
-        v-if="
-          settings.lyricsBackground === 'blur' ||
-          settings.lyricsBackground === 'dynamic'
-        "
+        v-if="settings.lyricsBackground === 'blur'"
         class="lyrics-background"
-        :class="{
-          'dynamic-background': settings.lyricsBackground === 'dynamic',
-        }"
       >
         <div
           class="top-right"
@@ -797,19 +791,6 @@ export default defineComponent({
     bottom: 0;
     animation-direction: reverse;
     animation-delay: 10s;
-  }
-}
-
-.dynamic-background > div {
-  animation: rotate 150s linear infinite;
-}
-
-@keyframes rotate {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
   }
 }
 

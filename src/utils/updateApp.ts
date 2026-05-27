@@ -27,6 +27,10 @@ const updateSetting = (): void => {
     settings.lyricsBackground = true;
   }
 
+  if (settings.lyricsBackground === 'dynamic') {
+    settings.lyricsBackground = 'blur';
+  }
+
   localStorage.setItem('settings', JSON.stringify(settings));
 };
 
