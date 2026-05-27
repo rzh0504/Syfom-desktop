@@ -407,6 +407,27 @@ export default defineComponent({
   }
 }
 
+[data-theme='dark'] .today-recommend {
+  background: linear-gradient(135deg, #27314f 0%, #202947 100%);
+  border-color: rgba(126, 160, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  .content {
+    color: #f3f6ff;
+  }
+
+  .icon,
+  .play-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #82a3ff;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .play-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+
 .recommend-list {
   min-height: 164px;
   padding: 16px;

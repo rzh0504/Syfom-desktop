@@ -875,6 +875,31 @@ h1 {
   }
 }
 
+[data-theme='dark'] .liked-songs {
+  background: linear-gradient(135deg, #2a3150 0%, #202846 100%);
+  border-color: rgba(126, 160, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  .content {
+    color: #f3f6ff;
+  }
+
+  .icon,
+  .play-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #82a3ff;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .lyrics-preview {
+    color: #8ba8ff;
+  }
+
+  .play-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+
 .liked-list {
   min-height: 164px;
   padding: 16px;
