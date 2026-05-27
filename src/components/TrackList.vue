@@ -38,7 +38,6 @@
       <div class="item" @click="addTrackToPlaylist">{{
         $t('contextMenu.addToPlaylist')
       }}</div>
-      <div class="item" @click="copyLink">{{ $t('contextMenu.copyUrl') }}</div>
     </ContextMenu>
 
     <div :style="listStyles">
@@ -252,18 +251,6 @@ export default defineComponent({
           (this.$parent as TrackListParent | undefined)?.removeTrack?.(trackID);
         });
       }
-    },
-    copyLink() {
-      const link =
-        this.rightClickedTrack?.streamUrl ||
-        `track:${this.rightClickedTrack.id}`;
-      this.$copyText(link)
-        .then(() => {
-          this.showToast(locale.t('toast.copied'));
-        })
-        .catch(err => {
-          this.showToast(`${locale.t('toast.copyFailed')}${err}`);
-        });
     },
     removeTrackFromQueue() {
       this.$store.state.player.removeTrackFromQueue(

@@ -78,7 +78,6 @@
       {{ formatTrackTime(trackDuration) }}
     </div>
 
-    <div v-if="trackPlayCount" class="count"> {{ trackPlayCount }}</div>
   </div>
 </template>
 
@@ -166,9 +165,6 @@ export default defineComponent({
     },
     trackDuration(): number | undefined {
       return this.track.dt;
-    },
-    trackPlayCount(): number | undefined {
-      return this.track.playCount;
     },
     albumId(): TrackId | undefined {
       return this.album?.id;
@@ -344,6 +340,7 @@ button {
 
   .title-and-artist {
     flex: 1;
+    min-width: 0;
     display: flex;
     .container {
       display: flex;
@@ -395,6 +392,7 @@ button {
   }
   .album {
     flex: 1;
+    min-width: 0;
     display: flex;
     font-size: 16px;
     opacity: 0.88;
@@ -404,8 +402,7 @@ button {
     -webkit-line-clamp: 2;
     overflow: hidden;
   }
-  .time,
-  .count {
+  .time {
     font-size: 16px;
     width: 50px;
     cursor: default;
@@ -415,11 +412,6 @@ button {
     font-variant-numeric: tabular-nums;
     opacity: 0.88;
     color: var(--color-text);
-  }
-  .count {
-    font-weight: bold;
-    font-size: 22px;
-    line-height: 22px;
   }
 }
 
@@ -482,8 +474,7 @@ button {
   }
   .title .featured,
   .artist,
-  .explicit-symbol,
-  .count {
+  .explicit-symbol {
     color: var(--color-primary);
     opacity: 0.88;
   }
