@@ -26,12 +26,7 @@
       <div class="playing">
         <div class="container" @click.stop>
           <img
-            :src="
-              $filters.resizeImage(
-                currentTrack.al && currentTrack.al.picUrl,
-                224
-              )
-            "
+            :src="$filters.resizeImage(currentTrackCover, 224)"
             loading="lazy"
             @click="goToAlbum"
           />
@@ -206,6 +201,11 @@ export default defineComponent({
     ...mapState(['player', 'settings', 'data']),
     currentTrack(): PlayerTrack {
       return (this.player as PlayerState).currentTrack;
+    },
+    currentTrackCover(): string {
+      return (
+        this.currentTrack.al?.picUrl || this.currentTrack.album?.picUrl || ''
+      );
     },
     volume: {
       get(): number {

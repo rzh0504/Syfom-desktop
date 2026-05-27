@@ -55,6 +55,14 @@ function numberSetting(value: unknown, fallback: number): number {
   return typeof value === 'number' ? value : fallback;
 }
 
+function applyNativeTheme(appearance: unknown): void {
+  if (appearance === 'light' || appearance === 'dark') {
+    nativeTheme.themeSource = appearance;
+  } else {
+    nativeTheme.themeSource = 'system';
+  }
+}
+
 const closeOnLinux = (e: Event, win: BrowserWindow, store: AppStore) => {
   let closeOpt = store.get('settings.closeAppOption');
   if (closeOpt !== 'exit') {
@@ -201,6 +209,7 @@ class Background {
     log('creating app window');
 
     const appearance = this.store.get('settings.appearance');
+    applyNativeTheme(appearance);
     const showLibraryDefault = this.store.get('settings.showLibraryDefault');
 
     const options: BrowserWindowConstructorOptions = {

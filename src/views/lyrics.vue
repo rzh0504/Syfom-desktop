@@ -396,10 +396,15 @@ export default defineComponent({
       },
     },
     imageUrl(): string {
-      return resizeImageUrl(this.currentTrack?.al?.picUrl, 1024);
+      return resizeImageUrl(this.currentTrackCover, 512);
     },
     bgImageUrl(): string {
-      return resizeImageUrl(this.currentTrack?.al?.picUrl, 512);
+      return resizeImageUrl(this.currentTrackCover, 512);
+    },
+    currentTrackCover(): string {
+      return (
+        this.currentTrack?.al?.picUrl || this.currentTrack?.album?.picUrl || ''
+      );
     },
     isShowLyricTypeSwitch(): boolean {
       return this.romalyric.length > 0 && this.tlyric.length > 0;
@@ -716,7 +721,7 @@ export default defineComponent({
     },
     getCoverColor() {
       if (this.settings.lyricsBackground !== true) return;
-      const cover = resizeImageUrl(this.currentTrack.al?.picUrl, 256);
+      const cover = resizeImageUrl(this.currentTrackCover, 256);
       if (!cover) return;
       vibrant
         .from(cover, { colorCount: 1 })

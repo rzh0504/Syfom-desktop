@@ -457,7 +457,6 @@ import { defineComponent } from 'vue';
 import { mapState, mapActions, mapMutations } from 'vuex';
 import { isLooseLoggedIn, doLogout } from '@/utils/auth';
 import { bytesToSize } from '@/utils/common';
-import { changeAppearance } from '@/utils/appearance';
 import { countDBSize, clearDB } from '@/utils/db';
 import { getProvider } from '@/providers';
 import locale from '@/locale';
@@ -602,7 +601,6 @@ export default defineComponent({
           key: 'appearance',
           value,
         });
-        changeAppearance(value);
       },
     },
     trayIconTheme: {

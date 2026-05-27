@@ -1,4 +1,4 @@
-import { app, dialog, globalShortcut, ipcMain } from 'electron';
+import { app, dialog, globalShortcut, ipcMain, nativeTheme } from 'electron';
 import type { BrowserWindow, IpcMainEvent } from 'electron';
 import type { EventEmitter } from 'events';
 import { registerGlobalShortcut } from '@/electron/globalShortcut';
@@ -27,8 +27,17 @@ type ShortcutUpdate = {
 
 type SettingsPayload = {
   enableGlobalShortcut?: boolean;
+  appearance?: unknown;
   [key: string]: unknown;
 };
+
+function applyNativeTheme(appearance: unknown): void {
+  if (appearance === 'light' || appearance === 'dark') {
+    nativeTheme.themeSource = appearance;
+  } else if (appearance === 'auto' || appearance === undefined) {
+    nativeTheme.themeSource = 'system';
+  }
+}
 
 const log = (text: unknown) => {
   console.log(`${clc.blueBright('[ipcMain.js]')} ${text}`);
@@ -132,6 +141,7 @@ export function initIpcMain(
 
   ipcMain.on('settings', (_event, options: SettingsPayload) => {
     store.set('settings', options);
+    applyNativeTheme(options.appearance);
     if (options.enableGlobalShortcut) {
       registerGlobalShortcut(win, store);
     } else {

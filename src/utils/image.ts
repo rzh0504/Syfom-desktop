@@ -5,11 +5,12 @@ export function resizeImageUrl(imgUrl: string, size = 512): string {
   if (!/^https?:\/\//i.test(imgUrl)) return imgUrl;
 
   if (imgUrl.includes('/rest/getCoverArt.view')) {
-    const separator = imgUrl.includes('?') ? '&' : '?';
-    return `${imgUrl}${separator}size=${size}`;
+    const url = new URL(imgUrl);
+    url.searchParams.set('size', String(size));
+    return url.toString();
   }
 
-  const httpsImgUrl = imgUrl.replace(/^http:\/\//i, 'https://');
-  const separator = httpsImgUrl.includes('?') ? '&' : '?';
-  return `${httpsImgUrl}${separator}param=${size}y${size}`;
+  const url = new URL(imgUrl.replace(/^http:\/\//i, 'https://'));
+  url.searchParams.set('param', `${size}y${size}`);
+  return url.toString();
 }
