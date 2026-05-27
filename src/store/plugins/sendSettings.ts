@@ -9,7 +9,8 @@ export function getSendSettingsPlugin() {
     store.subscribe((mutation, state) => {
       // console.log(mutation);
       if (mutation.type !== 'updateSettings') return;
-      window.electronAPI?.send('settings', state.settings);
+      const settings = JSON.parse(JSON.stringify(state.settings)) as unknown;
+      window.electronAPI?.send('settings', settings);
     });
   };
 }

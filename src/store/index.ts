@@ -41,17 +41,20 @@ if ([undefined, null].includes(store.state.settings.lang)) {
 
 changeAppearance(store.state.settings.appearance);
 
-store.subscribe((mutation, state) => {
-  if (mutation.type !== 'updateSettings') return;
-  const payload = mutation.payload as { key?: unknown; value?: unknown };
-  if (payload.key === 'appearance') {
-    changeAppearance(
-      typeof payload.value === 'string'
-        ? payload.value
-        : state.settings.appearance
-    );
-  }
-});
+store.subscribe(
+  (mutation, state) => {
+    if (mutation.type !== 'updateSettings') return;
+    const payload = mutation.payload as { key?: unknown; value?: unknown };
+    if (payload.key === 'appearance') {
+      changeAppearance(
+        typeof payload.value === 'string'
+          ? payload.value
+          : state.settings.appearance
+      );
+    }
+  },
+  { prepend: true }
+);
 
 window
   .matchMedia('(prefers-color-scheme: dark)')
