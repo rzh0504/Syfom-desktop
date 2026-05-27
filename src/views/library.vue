@@ -284,6 +284,42 @@ function extractLyricPart(rawLyric: string): string {
   return rawLyric.split(']').pop()?.trim() || '';
 }
 
+const lyricCreditFieldSuffix = String.raw`(?:[:：/／-]|[A-Za-z][\w .&+/-]*\s*[:：]|$)`;
+const lyricCreditLinePatterns = [
+  new RegExp(
+    `^(?:作词|作曲|词曲|编曲|制作人|制作|监制|出品|发行|企划|统筹|词|曲|OP|SP|A&R)\\s*${lyricCreditFieldSuffix}`,
+    'i'
+  ),
+  new RegExp(
+    `^(?:配唱(?:制作人)?|和声(?:编写)?|录音(?:师|室)?|混音(?:师|室)?|母带(?:师|后期)?|人声(?:编辑|录音)?|音频编辑|声音设计|Program(?:ming)?)\\s*${lyricCreditFieldSuffix}`,
+    'i'
+  ),
+  new RegExp(
+    `^(?:吉他|贝斯|鼓|键盘|钢琴|弦乐|小提琴|大提琴|合成器|乐器|演奏)\\s*${lyricCreditFieldSuffix}`,
+    'i'
+  ),
+  new RegExp(
+    `^(?:producer|composer|lyricist|lyrics?|songwriter|arrang(?:er|ement)|vocals?|backing vocals?|chorus|guitars?|bass|drums?|keyboards?|piano|strings?|violin|cello|synth(?:esizer)?|recording|mix(?:ing)?|master(?:ing)?|engineer|publisher)\\s*${lyricCreditFieldSuffix}`,
+    'i'
+  ),
+  /^(?:produced|presented)\s+by\s+/i,
+];
+
+function isSelectableLyricLine(rawLyric: string): boolean {
+  const content = extractLyricPart(rawLyric);
+  if (!content || content.includes('纯音乐，请欣赏')) return false;
+
+  const normalizedContent = content
+    .replace(/^[（(【[]\s*/, '')
+    .replace(/\s*[）)】\]]$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return !lyricCreditLinePatterns.some(pattern =>
+    pattern.test(normalizedContent)
+  );
+}
+
 function getTimestamp(value: unknown): number {
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
@@ -334,9 +370,9 @@ export default defineComponent({
 
       const lyricLine = lyric
         .split('\n')
-        .filter(
-          (line: string) => !line.includes('作词') && !line.includes('作曲')
-        );
+        .filter((line: string) => isSelectableLyricLine(line));
+      if (lyricLine.length === 0) return [];
+
       const lyricsToPick = Math.min(lyricLine.length, 1);
       const randomUpperBound = lyricLine.length - lyricsToPick;
       const availableStartIndexes = Array.from(
