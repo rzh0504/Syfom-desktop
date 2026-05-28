@@ -185,7 +185,9 @@ export function createMenu(win: BrowserWindow, store: StoreLike): void {
         {
           label: 'GitHub',
           click: async () => {
-            await shell.openExternal('https://github.com/qier222/YesPlayMusic');
+            await shell.openExternal(
+              'https://github.com/rzh0504/Syfome-desktop'
+            );
           },
         },
         {

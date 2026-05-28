@@ -34,6 +34,7 @@ export default {
       all: 'All Time',
     },
     userProfileMenu: {
+      navidrome: 'Navidrome Sunucusu',
       settings: 'Ayarlar',
       logout: 'Çıkış Yap',
     },

@@ -31,6 +31,7 @@ export default {
       all: '所有時間',
     },
     userProfileMenu: {
+      navidrome: 'Navidrome 伺服器',
       settings: '設定',
       logout: '登出',
     },

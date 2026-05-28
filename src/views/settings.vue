@@ -1,7 +1,7 @@
 <template>
   <div class="settings-page" @click="clickOutside">
     <div class="container">
-      <div v-if="showUserInfo" class="user">
+      <div v-if="false" class="user">
         <div class="left">
           <img class="avatar" :src="data.user.avatarUrl" loading="lazy" />
           <div class="info">

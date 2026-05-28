@@ -48,6 +48,10 @@
     </nav>
 
     <ContextMenu ref="userProfileMenu">
+      <div class="item" @click="toNavidrome">
+        <svg-icon icon-class="login" />
+        {{ $t('library.userProfileMenu.navidrome') }}
+      </div>
       <div class="item" @click="toSettings">
         <svg-icon icon-class="settings" />
         {{ $t('library.userProfileMenu.settings') }}
@@ -177,8 +181,11 @@ export default defineComponent({
     toSettings(): void {
       this.$router.push({ name: 'settings' });
     },
+    toNavidrome(): void {
+      this.$router.push({ name: 'navidrome' });
+    },
     toGitHub(): void {
-      window.open('https://github.com/qier222/YesPlayMusic');
+      window.open('https://github.com/rzh0504/Syfome-desktop');
     },
     toLogin(): void {
       this.$router.push({ name: 'login' });

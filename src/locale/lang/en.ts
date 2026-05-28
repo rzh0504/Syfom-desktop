@@ -34,6 +34,7 @@ export default {
       all: 'All Time',
     },
     userProfileMenu: {
+      navidrome: 'Navidrome Server',
       settings: 'Settings',
       logout: 'Logout',
     },

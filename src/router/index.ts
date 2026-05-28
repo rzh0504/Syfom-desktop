@@ -103,6 +103,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/settings.vue'),
   },
   {
+    path: '/navidrome',
+    name: 'navidrome',
+    component: () => import('@/views/navidrome.vue'),
+  },
+  {
     path: '/home/catalog/:kind',
     name: 'homeCatalog',
     component: () => import('@/views/homeCatalog.vue'),
