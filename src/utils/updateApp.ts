@@ -42,6 +42,7 @@ const updateData = (): void => {
     activeProvider: 'navidrome',
     sources: {
       ...initLocalStorage.data.sources,
+      ...(parsedData?.sources || {}),
       navidrome: {
         ...initLocalStorage.data.sources.navidrome,
         ...(parsedData?.sources?.navidrome || {}),

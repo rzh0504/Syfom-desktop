@@ -6,6 +6,7 @@ import {
   readSession,
   requestSubsonic,
 } from './client';
+import type { NavidromeSession, NavidromeRequestConfig } from './client';
 import {
   mapAlbum,
   mapArtist,
@@ -34,6 +35,21 @@ export const capabilities = {
 };
 
 type Id = string | number;
+type SourceState = {
+  key: string;
+  name?: string;
+  provider?: string;
+  enabled?: boolean;
+  serverUrl?: string;
+  username?: string;
+  token?: string;
+  salt?: string;
+};
+type MapContext = {
+  sourceKey?: string;
+  sourceName?: string;
+  session?: NavidromeSession | null;
+};
 
 type SearchResultResponse = {
   song?: NavidromeSong[];
@@ -59,6 +75,81 @@ type LyricsLine = {
 
 function isPresent<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
+}
+
+function readDataSources(): Record<string, SourceState> {
+  try {
+    const data = JSON.parse(localStorage.getItem('data') || '{}');
+    return data.sources || {};
+  } catch (_error) {
+    return {};
+  }
+}
+
+function sessionFromSource(source: SourceState): NavidromeSession | null {
+  if (source.serverUrl && source.username && source.token && source.salt) {
+    return {
+      serverUrl: source.serverUrl,
+      username: source.username,
+      token: source.token,
+      salt: source.salt,
+    };
+  }
+  if (source.key === 'navidrome') return readSession();
+  return null;
+}
+
+function getEnabledSources(): (SourceState & { session: NavidromeSession })[] {
+  const sources = readDataSources();
+  return Object.values(sources)
+    .filter(
+      source => source.provider === 'navidrome' || source.key === 'navidrome'
+    )
+    .filter(source => source.enabled !== false)
+    .map(source => ({ ...source, session: sessionFromSource(source) }))
+    .filter((source): source is SourceState & { session: NavidromeSession } =>
+      Boolean(source.session)
+    );
+}
+
+function contextForSource(
+  source?: SourceState & { session?: NavidromeSession }
+) {
+  return {
+    sourceKey: source?.key || 'navidrome',
+    sourceName: source?.name || 'Navidrome',
+    session: source?.session || readSession(),
+  } as MapContext;
+}
+
+function parseScopedId(id: Id): { sourceKey?: string; id: string } {
+  const value = String(id);
+  const sources = readDataSources();
+  const separator = value.indexOf(':');
+  if (separator <= 0) return { id: value };
+  const sourceKey = value.slice(0, separator);
+  if (!sources[sourceKey]) return { id: value };
+  return { sourceKey, id: value.slice(separator + 1) };
+}
+
+function configForContext(context: MapContext = {}): NavidromeRequestConfig {
+  return context.session ? { session: context.session } : {};
+}
+
+function sourceForKey(sourceKey?: string) {
+  if (!sourceKey) return null;
+  const source = readDataSources()[sourceKey];
+  const session = source ? sessionFromSource(source) : null;
+  return source && session ? { ...source, session } : null;
+}
+
+async function allEnabled<T>(
+  loader: (source: SourceState & { session: NavidromeSession }) => Promise<T[]>
+): Promise<T[]> {
+  const results = await Promise.all(
+    getEnabledSources().map(source => loader(source).catch(() => []))
+  );
+  return results.flat();
 }
 
 type LoginParams = {
@@ -102,7 +193,10 @@ type ScrobbleSongParams = {
   submission?: boolean;
 };
 
-async function getSongsByAlbumIds(albumIds: Id[] = []) {
+async function getSongsByAlbumIds(
+  albumIds: Id[] = [],
+  context: MapContext = {}
+) {
   const unique = [...new Set(albumIds)].filter(Boolean).slice(0, 6);
   if (unique.length === 0) return [];
 
@@ -110,7 +204,8 @@ async function getSongsByAlbumIds(albumIds: Id[] = []) {
     unique.map(id =>
       requestSubsonic<{ album?: NavidromeAlbum & { song?: NavidromeSong[] } }>(
         'getAlbum',
-        { id }
+        { id },
+        configForContext(context)
       )
         .then(response => response.album)
         .catch(() => null)
@@ -119,7 +214,9 @@ async function getSongsByAlbumIds(albumIds: Id[] = []) {
 
   return albums
     .filter(isPresent)
-    .flatMap(album => (album.song || []).slice(0, 5).map(mapSong))
+    .flatMap(album =>
+      (album.song || []).slice(0, 5).map(song => mapSong(song, context))
+    )
     .slice(0, 24);
 }
 
@@ -142,11 +239,12 @@ function parseAlbumListResponse(response: AlbumListResponse): NavidromeAlbum[] {
 }
 
 export async function login(params: LoginParams) {
-  await loginWithPassword(params);
+  const session = await loginWithPassword(params);
   const profile = await getProfile();
   return {
     code: 200,
     profile,
+    session,
   };
 }
 
@@ -180,25 +278,47 @@ export async function getProfile() {
   };
 }
 
-export async function getPlaylistList() {
+export function getSources() {
+  return Object.values(readDataSources())
+    .filter(
+      source => source.provider === 'navidrome' || source.key === 'navidrome'
+    )
+    .map(source => ({
+      key: source.key,
+      name: source.name || 'Navidrome',
+      serverUrl: source.serverUrl || sessionFromSource(source)?.serverUrl || '',
+      username: source.username || sessionFromSource(source)?.username || '',
+      enabled: source.enabled !== false,
+    }));
+}
+
+export async function getPlaylistList(context: MapContext = {}) {
   const response = await requestSubsonic<{
     playlists?: { playlist?: NavidromePlaylist[] };
-  }>('getPlaylists');
+  }>('getPlaylists', {}, configForContext(context));
   const playlists = response.playlists?.playlist || [];
   return playlists.map(raw => ({
-    ...mapPlaylist(raw),
+    ...mapPlaylist(raw, context),
     tracks: [],
     trackIds: [],
     trackCount: Number(raw.songCount || 0),
   }));
 }
 
+export async function getAllPlaylistList() {
+  return allEnabled(source => getPlaylistList(contextForSource(source)));
+}
+
 export async function getPlaylistDetail(id: Id) {
+  const scoped = parseScopedId(id);
+  const source = sourceForKey(scoped.sourceKey);
+  const context = source ? contextForSource(source) : {};
   const response = await requestSubsonic<{ playlist?: NavidromePlaylist }>(
     'getPlaylist',
-    { id }
+    { id: scoped.id },
+    configForContext(context)
   );
-  return mapPlaylist(response.playlist || {});
+  return mapPlaylist(response.playlist || {}, context);
 }
 
 export async function createPlaylist(name: string) {
@@ -251,11 +371,16 @@ export async function updatePlaylistTracks({
 }
 
 export async function getAlbumDetail(id: Id) {
+  const scoped = parseScopedId(id);
+  const source = sourceForKey(scoped.sourceKey);
+  const context = source ? contextForSource(source) : {};
   const response = await requestSubsonic<{
     album?: NavidromeAlbum & { song?: NavidromeSong[] };
-  }>('getAlbum', { id });
-  const album = mapAlbum(response.album || {});
-  const songs = (response.album?.song || []).map(mapSong);
+  }>('getAlbum', { id: scoped.id }, configForContext(context));
+  const album = mapAlbum(response.album || {}, context);
+  const songs = (response.album?.song || []).map(song =>
+    mapSong(song, context)
+  );
   return {
     album,
     songs,
@@ -263,13 +388,17 @@ export async function getAlbumDetail(id: Id) {
 }
 
 export async function getArtistDetail(id: Id) {
+  const scoped = parseScopedId(id);
+  const source = sourceForKey(scoped.sourceKey);
+  const context = source ? contextForSource(source) : {};
   const response = await requestSubsonic<{
     artist?: NavidromeArtist & { album?: NavidromeAlbum[] };
-  }>('getArtist', { id });
+  }>('getArtist', { id: scoped.id }, configForContext(context));
   const artistRaw = response.artist || {};
-  const artist = mapArtist(artistRaw);
+  const artist = mapArtist(artistRaw, context);
   const hotSongs = await getSongsByAlbumIds(
-    (artistRaw.album || []).map(album => album.id)
+    (artistRaw.album || []).map(album => album.id),
+    context
   );
   return {
     artist,
@@ -278,10 +407,15 @@ export async function getArtistDetail(id: Id) {
 }
 
 export async function getArtistAlbums(id: Id, limit = 200) {
+  const scoped = parseScopedId(id);
+  const source = sourceForKey(scoped.sourceKey);
+  const context = source ? contextForSource(source) : {};
   const response = await requestSubsonic<{
     artist?: { album?: NavidromeAlbum[] };
-  }>('getArtist', { id });
-  const albums = (response.artist?.album || []).map(mapAlbum);
+  }>('getArtist', { id: scoped.id }, configForContext(context));
+  const albums = (response.artist?.album || []).map(album =>
+    mapAlbum(album, context)
+  );
   return {
     hotAlbums: albums.slice(0, limit),
   };
@@ -324,9 +458,9 @@ export async function searchAll({
   });
 
   const result = response.searchResult3 || {};
-  const songs = (result.song || []).map(mapSong);
-  const artists = (result.artist || []).map(mapArtist);
-  const albums = (result.album || []).map(mapAlbum);
+  const songs = (result.song || []).map(song => mapSong(song));
+  const artists = (result.artist || []).map(artist => mapArtist(artist));
+  const albums = (result.album || []).map(album => mapAlbum(album));
 
   return {
     result: {
@@ -348,52 +482,92 @@ export async function getLibrarySongs({
 }: LibrarySongsParams = {}) {
   const safeOffset = Math.max(0, Number(offset) || 0);
   const safeLimit = Math.max(1, Number(limit) || 100);
+  const sources = getEnabledSources();
+
+  if (sources.length > 1) {
+    const perSourceOffset = Math.floor(safeOffset / sources.length);
+    const perSourceLimit = Math.ceil(safeLimit / sources.length);
+    const songs = await allEnabled(source =>
+      getLibrarySongsForContext(
+        { offset: perSourceOffset, limit: perSourceLimit },
+        contextForSource(source)
+      ).then(result => result.songs)
+    );
+    return {
+      songs: songs.slice(0, safeLimit),
+      hasMore: songs.length >= safeLimit,
+    };
+  }
+
+  return getLibrarySongsForContext({ offset: safeOffset, limit: safeLimit });
+}
+
+async function getLibrarySongsForContext(
+  { offset = 0, limit = 100 }: LibrarySongsParams = {},
+  context: MapContext = {}
+) {
+  const safeOffset = Math.max(0, Number(offset) || 0);
+  const safeLimit = Math.max(1, Number(limit) || 100);
 
   try {
-    const response = await requestSubsonic<SongListResponse>('getSongs', {
-      offset: safeOffset,
-      limit: safeLimit,
-    });
+    const response = await requestSubsonic<SongListResponse>(
+      'getSongs',
+      {
+        offset: safeOffset,
+        limit: safeLimit,
+      },
+      configForContext(context)
+    );
     const rawSongs = parseSongListResponse(response);
     return {
-      songs: rawSongs.map(mapSong),
+      songs: rawSongs.map(song => mapSong(song, context)),
       hasMore: rawSongs.length >= safeLimit,
     };
   } catch (_error) {
     try {
       const response = await requestSubsonic<{
         searchResult3?: SearchResultResponse;
-      }>('search3', {
-        query: '',
-        songCount: safeLimit,
-        songOffset: safeOffset,
-        artistCount: 0,
-        albumCount: 0,
-      });
+      }>(
+        'search3',
+        {
+          query: '',
+          songCount: safeLimit,
+          songOffset: safeOffset,
+          artistCount: 0,
+          albumCount: 0,
+        },
+        configForContext(context)
+      );
       const rawSongs = response.searchResult3?.song || [];
       return {
-        songs: rawSongs.map(mapSong),
+        songs: rawSongs.map(song => mapSong(song, context)),
         hasMore: rawSongs.length >= safeLimit,
       };
     } catch (_fallbackError) {
       const response = await requestSubsonic<{
         randomSongs?: { song?: NavidromeSong[] };
-      }>('getRandomSongs', {
-        size: safeLimit,
-      });
+      }>(
+        'getRandomSongs',
+        {
+          size: safeLimit,
+        },
+        configForContext(context)
+      );
       const rawSongs = response.randomSongs?.song || [];
       return {
-        songs: rawSongs.map(mapSong),
+        songs: rawSongs.map(song => mapSong(song, context)),
         hasMore: false,
       };
     }
   }
 }
 
-export async function refreshLibrary() {
+export async function refreshLibrary(sourceKey?: string) {
+  const source = sourceForKey(sourceKey) || getEnabledSources()[0];
+  const context = contextForSource(source);
   const response = await requestSubsonic<{
     scanStatus?: { scanning?: boolean; count?: number };
-  }>('startScan');
+  }>('startScan', {}, configForContext(context));
   return {
     code: 200,
     scanning: Boolean(response.scanStatus?.scanning),
@@ -401,42 +575,83 @@ export async function refreshLibrary() {
   };
 }
 
-export async function getRandomSongs(size = 24) {
+export async function getRandomSongs(size = 24, context: MapContext = {}) {
   const safeSize = Math.max(1, Number(size) || 24);
   const response = await requestSubsonic<{
     randomSongs?: { song?: NavidromeSong[] };
-  }>('getRandomSongs', {
-    size: safeSize,
-  });
+  }>(
+    'getRandomSongs',
+    {
+      size: safeSize,
+    },
+    configForContext(context)
+  );
   const rawSongs = response.randomSongs?.song || [];
-  return rawSongs.map(mapSong);
+  return rawSongs.map(song => mapSong(song, context));
 }
 
-export async function getAlbumListByType({
-  type = 'random',
-  size = 24,
-  offset = 0,
-}: AlbumListParams = {}) {
+export async function getAllRandomSongs(size = 24) {
+  const sources = getEnabledSources();
+  const perSourceSize = Math.max(
+    1,
+    Math.ceil(size / Math.max(1, sources.length))
+  );
+  const songs = await allEnabled(source =>
+    getRandomSongs(perSourceSize, contextForSource(source))
+  );
+  return songs.slice(0, size);
+}
+
+export async function getAlbumListByType(
+  { type = 'random', size = 24, offset = 0 }: AlbumListParams = {},
+  context: MapContext = {}
+) {
   const safeSize = Math.max(1, Number(size) || 24);
   const safeOffset = Math.max(0, Number(offset) || 0);
-  const response = await requestSubsonic<AlbumListResponse>('getAlbumList2', {
-    type,
-    size: safeSize,
-    offset: safeOffset,
-  });
+  const response = await requestSubsonic<AlbumListResponse>(
+    'getAlbumList2',
+    {
+      type,
+      size: safeSize,
+      offset: safeOffset,
+    },
+    configForContext(context)
+  );
   const rawAlbums = parseAlbumListResponse(response);
-  return rawAlbums.map(mapAlbum);
+  return rawAlbums.map(album => mapAlbum(album, context));
 }
 
-export async function getAllArtists() {
+export async function getAllAlbumListByType(params: AlbumListParams = {}) {
+  const { size = 24, offset = 0 } = params;
+  const sources = getEnabledSources();
+  const perSourceOffset = Math.floor(
+    Number(offset || 0) / Math.max(1, sources.length)
+  );
+  const perSourceSize = Math.ceil(
+    Number(size || 24) / Math.max(1, sources.length)
+  );
+  const albums = await allEnabled(source =>
+    getAlbumListByType(
+      { ...params, size: perSourceSize, offset: perSourceOffset },
+      contextForSource(source)
+    )
+  );
+  return albums.slice(0, Number(size || 24));
+}
+
+export async function getAllArtists(context: MapContext = {}) {
   const response = await requestSubsonic<{
     artists?: { index?: { artist?: NavidromeArtist[] }[] };
-  }>('getArtists');
+  }>('getArtists', {}, configForContext(context));
   const indexes = response.artists?.index || [];
   return indexes
     .flatMap(index => index.artist || [])
     .filter(Boolean)
-    .map(mapArtist);
+    .map(artist => mapArtist(artist, context));
+}
+
+export async function getAllSourcesArtists() {
+  return allEnabled(source => getAllArtists(contextForSource(source)));
 }
 
 export async function getArtistList({
@@ -449,16 +664,20 @@ export async function getArtistList({
   try {
     const response = await requestSubsonic<{
       searchResult3?: SearchResultResponse;
-    }>('search3', {
-      query: '',
-      artistCount: safeLimit,
-      artistOffset: safeOffset,
-      albumCount: 0,
-      songCount: 0,
-    });
+    }>(
+      'search3',
+      {
+        query: '',
+        artistCount: safeLimit,
+        artistOffset: safeOffset,
+        albumCount: 0,
+        songCount: 0,
+      },
+      configForContext({})
+    );
     const rawArtists = response.searchResult3?.artist || [];
     return {
-      artists: rawArtists.map(mapArtist),
+      artists: rawArtists.map(artist => mapArtist(artist)),
       hasMore: rawArtists.length >= safeLimit,
     };
   } catch (_error) {
@@ -477,11 +696,18 @@ export async function getSongDetails(ids: string | number) {
     .filter(Boolean);
 
   const songs = await Promise.all(
-    idList.map(id =>
-      requestSubsonic<{ song?: NavidromeSong }>('getSong', { id })
-        .then(response => mapSong(response.song || {}))
-        .catch(() => null)
-    )
+    idList.map(id => {
+      const scoped = parseScopedId(id);
+      const source = sourceForKey(scoped.sourceKey);
+      const context = source ? contextForSource(source) : {};
+      return requestSubsonic<{ song?: NavidromeSong }>(
+        'getSong',
+        { id: scoped.id },
+        configForContext(context)
+      )
+        .then(response => mapSong(response.song || {}, context))
+        .catch(() => null);
+    })
   );
 
   return {
@@ -493,10 +719,13 @@ export async function getSongDetails(ids: string | number) {
 }
 
 export async function getLyrics(id: Id) {
+  const scoped = parseScopedId(id);
+  const source = sourceForKey(scoped.sourceKey);
+  const context = source ? contextForSource(source) : {};
   try {
     const response = await requestSubsonic<{
       lyricsList?: { structuredLyrics?: { line?: LyricsLine[] }[] };
-    }>('getLyricsBySongId', { id });
+    }>('getLyricsBySongId', { id: scoped.id }, configForContext(context));
     const structuredLyrics = response.lyricsList?.structuredLyrics;
     if (Array.isArray(structuredLyrics) && structuredLyrics.length > 0) {
       const lines = structuredLyrics[0].line || [];
@@ -526,42 +755,92 @@ export async function getLyrics(id: Id) {
 }
 
 export async function starSong(id: Id, like = true) {
+  const scoped = parseScopedId(id);
+  const source = sourceForKey(scoped.sourceKey);
+  const context = source ? contextForSource(source) : {};
   if (like) {
-    await requestSubsonic('star', { id });
+    await requestSubsonic('star', { id: scoped.id }, configForContext(context));
   } else {
-    await requestSubsonic('unstar', { id });
+    await requestSubsonic(
+      'unstar',
+      { id: scoped.id },
+      configForContext(context)
+    );
   }
   return { code: 200 };
 }
 
 export async function starAlbum(id: Id, like = true) {
+  const scoped = parseScopedId(id);
+  const source = sourceForKey(scoped.sourceKey);
+  const context = source ? contextForSource(source) : {};
   if (like) {
-    await requestSubsonic('star', { albumId: id });
+    await requestSubsonic(
+      'star',
+      { albumId: scoped.id },
+      configForContext(context)
+    );
   } else {
-    await requestSubsonic('unstar', { albumId: id });
+    await requestSubsonic(
+      'unstar',
+      { albumId: scoped.id },
+      configForContext(context)
+    );
   }
   return { code: 200 };
 }
 
 export async function starArtist(id: Id, like = true) {
+  const scoped = parseScopedId(id);
+  const source = sourceForKey(scoped.sourceKey);
+  const context = source ? contextForSource(source) : {};
   if (like) {
-    await requestSubsonic('star', { artistId: id });
+    await requestSubsonic(
+      'star',
+      { artistId: scoped.id },
+      configForContext(context)
+    );
   } else {
-    await requestSubsonic('unstar', { artistId: id });
+    await requestSubsonic(
+      'unstar',
+      { artistId: scoped.id },
+      configForContext(context)
+    );
   }
   return { code: 200 };
 }
 
 export async function getStarred() {
+  const sources = getEnabledSources();
+  if (sources.length > 1) {
+    const results = await Promise.all(
+      sources.map(source =>
+        getStarredForContext(contextForSource(source)).catch(() => ({
+          songs: [],
+          albums: [],
+          artists: [],
+        }))
+      )
+    );
+    return {
+      songs: results.flatMap(result => result.songs),
+      albums: results.flatMap(result => result.albums),
+      artists: results.flatMap(result => result.artists),
+    };
+  }
+  return getStarredForContext(contextForSource(sources[0]));
+}
+
+async function getStarredForContext(context: MapContext = {}) {
   const response = await requestSubsonic<{
     starred2?: SearchResultResponse;
-  }>('getStarred2');
+  }>('getStarred2', {}, configForContext(context));
   const starred = response.starred2 || {};
 
   return {
-    songs: (starred.song || []).map(mapSong),
-    albums: (starred.album || []).map(mapAlbum),
-    artists: (starred.artist || []).map(mapArtist),
+    songs: (starred.song || []).map(song => mapSong(song, context)),
+    albums: (starred.album || []).map(album => mapAlbum(album, context)),
+    artists: (starred.artist || []).map(artist => mapArtist(artist, context)),
   };
 }
 
@@ -570,10 +849,17 @@ export async function scrobbleSong({
   time,
   submission = true,
 }: ScrobbleSongParams) {
-  await requestSubsonic('scrobble', {
-    id,
-    time: Number(time) > 1000000000000 ? Number(time) : Date.now(),
-    submission: submission ? 'true' : 'false',
-  });
+  const scoped = parseScopedId(id);
+  const source = sourceForKey(scoped.sourceKey);
+  const context = source ? contextForSource(source) : {};
+  await requestSubsonic(
+    'scrobble',
+    {
+      id: scoped.id,
+      time: Number(time) > 1000000000000 ? Number(time) : Date.now(),
+      submission: submission ? 'true' : 'false',
+    },
+    configForContext(context)
+  );
   return { code: 200 };
 }

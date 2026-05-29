@@ -13,6 +13,10 @@ export type NavidromeSession = {
   salt: string;
 };
 
+export type NavidromeRequestConfig = AxiosRequestConfig & {
+  session?: NavidromeSession | null;
+};
+
 type AuthParams = {
   u: string;
   t: string;
@@ -152,29 +156,30 @@ function unwrapSubsonicResponse(data: SubsonicResponse): SubsonicWrapper {
 export async function requestSubsonic(
   endpoint: string,
   params?: QueryParams,
-  config?: AxiosRequestConfig
+  config?: NavidromeRequestConfig
 ): Promise<SubsonicWrapper>;
 export async function requestSubsonic<T>(
   endpoint: string,
   params?: QueryParams,
-  config?: AxiosRequestConfig
+  config?: NavidromeRequestConfig
 ): Promise<T>;
 export async function requestSubsonic<T = SubsonicWrapper>(
   endpoint: string,
   params: QueryParams = {},
-  config: AxiosRequestConfig = {}
+  config: NavidromeRequestConfig = {}
 ): Promise<T> {
-  const session = readSession();
+  const { session: configSession, ...axiosConfig } = config;
+  const session = configSession || readSession();
   const url = buildEndpointUrl(endpoint, session);
   const response = await axios({
     url,
-    method: config.method || 'get',
+    method: axiosConfig.method || 'get',
     params: {
       ...buildAuthParams(session),
       ...params,
     },
     timeout: 15000,
-    ...config,
+    ...axiosConfig,
   });
 
   return unwrapSubsonicResponse(response.data) as T;
@@ -226,6 +231,22 @@ export function buildCoverArtUrl(coverArtId?: string, size = 512): string {
   });
 }
 
+export function buildCoverArtUrlForSession(
+  coverArtId?: string,
+  size = 512,
+  session?: NavidromeSession | null
+): string {
+  if (!coverArtId) return '';
+  return buildAuthenticatedUrl(
+    'getCoverArt',
+    {
+      id: coverArtId,
+      size,
+    },
+    session || readSession()
+  );
+}
+
 export function buildAvatarUrl(): string {
   return '/img/logos/yesplaymusic.png';
 }
@@ -251,4 +272,19 @@ export function buildStreamUrl(songId?: string): string {
     id: songId,
     maxBitRate: getConfiguredMaxBitRate(),
   });
+}
+
+export function buildStreamUrlForSession(
+  songId?: string,
+  session?: NavidromeSession | null
+): string {
+  if (!songId) return '';
+  return buildAuthenticatedUrl(
+    'stream',
+    {
+      id: songId,
+      maxBitRate: getConfiguredMaxBitRate(),
+    },
+    session || readSession()
+  );
 }

@@ -40,6 +40,11 @@
   --color-text: #000;
   --color-primary: #335eea;
   --color-primary-bg: #eaeffd;
+  --color-button-primary: var(--color-primary);
+  --color-button-primary-bg: var(--color-primary-bg);
+  --color-button-primary-bg-hover: var(--color-primary-bg-for-transparent);
+  --color-switch-active: #82a3ff;
+  --color-switch-active-bg: #27314f;
   --color-secondary: #7a7a7b;
   --color-secondary-bg: #f5f5f7;
   --color-navbar-bg: rgba(255, 255, 255, 0.86);
@@ -53,6 +58,11 @@
   --color-text: #ffffff;
   --color-primary: #82a3ff;
   --color-primary-bg: #27314f;
+  --color-button-primary: var(--color-primary);
+  --color-button-primary-bg: var(--color-primary-bg);
+  --color-button-primary-bg-hover: var(--color-primary-bg-for-transparent);
+  --color-switch-active: #82a3ff;
+  --color-switch-active-bg: #27314f;
   --color-secondary: #7a7a7b;
   --color-secondary-bg: #323232;
   --color-navbar-bg: rgba(34, 34, 34, 0.86);

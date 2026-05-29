@@ -43,7 +43,7 @@ export function userPlaylist(_params?: {
   timestamp?: number;
 }) {
   return getActiveProvider()
-    .getPlaylistList()
+    .getAllPlaylistList()
     .then(playlist => ({ playlist }));
 }
 
@@ -85,9 +85,12 @@ export function userLikedSongsIDs(_params?: { uid?: string | number }) {
  */
 export function likedAlbums(_params?: { limit?: number; offset?: number }) {
   const { limit = 50, offset = 0 } = _params || {};
-  return getActiveProvider()
-    .getAlbumListByType({ type: 'alphabeticalByName', size: limit, offset })
-    .then(albums => ({ data: albums, hasMore: albums.length >= limit }));
+  const provider = getActiveProvider();
+  return (provider.getAllAlbumListByType || provider.getAlbumListByType)({
+    type: 'alphabeticalByName',
+    size: limit,
+    offset,
+  }).then(albums => ({ data: albums, hasMore: albums.length >= limit }));
 }
 
 /**
@@ -96,7 +99,15 @@ export function likedAlbums(_params?: { limit?: number; offset?: number }) {
  */
 export function likedArtists(_params?: { limit?: number; offset?: number }) {
   const { limit = 50, offset = 0 } = _params || {};
-  return getActiveProvider()
-    .getArtistList({ limit, offset })
-    .then(result => ({ data: result.artists, hasMore: result.hasMore }));
+  const provider = getActiveProvider();
+  if (provider.getAllSourcesArtists) {
+    return provider.getAllSourcesArtists().then(artists => ({
+      data: artists.slice(offset, offset + limit),
+      hasMore: artists.length > offset + limit,
+    }));
+  }
+  return provider.getArtistList({ limit, offset }).then(result => ({
+    data: result.artists,
+    hasMore: result.hasMore,
+  }));
 }

@@ -1,6 +1,18 @@
-import { buildCoverArtUrl, buildStreamUrl } from './client';
+import {
+  buildCoverArtUrl,
+  buildCoverArtUrlForSession,
+  buildStreamUrl,
+  buildStreamUrlForSession,
+} from './client';
+import type { NavidromeSession } from './client';
 
 const SOURCE = 'navidrome';
+
+type MapContext = {
+  sourceKey?: string;
+  sourceName?: string;
+  session?: NavidromeSession | null;
+};
 
 export type NavidromeArtist = {
   id?: string;
@@ -59,19 +71,38 @@ export type NavidromePlaylist = {
   public?: boolean;
 };
 
-function sourceUid(type: string, id?: string) {
-  return id ? `${SOURCE}:${type}:${id}` : '';
+function scopedId(id?: string, context: MapContext = {}) {
+  if (!id) return id;
+  if (!context.sourceKey || context.sourceKey === SOURCE) return id;
+  return `${context.sourceKey}:${id}`;
 }
 
-export function mapArtist(raw: NavidromeArtist = {}) {
+function sourceUid(type: string, id?: string, context: MapContext = {}) {
+  const itemId = scopedId(id, context);
+  return itemId ? `${SOURCE}:${type}:${itemId}` : '';
+}
+
+function coverArtUrl(id?: string, size = 512, context: MapContext = {}) {
+  if (!context.session) return buildCoverArtUrl(id, size);
+  return buildCoverArtUrlForSession(id, size, context.session);
+}
+
+function streamUrl(id?: string, context: MapContext = {}) {
+  if (!context.session) return buildStreamUrl(id);
+  return buildStreamUrlForSession(id, context.session);
+}
+
+export function mapArtist(raw: NavidromeArtist = {}, context: MapContext = {}) {
   return {
-    id: raw.id,
-    uid: sourceUid('artist', raw.id),
+    id: scopedId(raw.id, context),
+    uid: sourceUid('artist', raw.id, context),
     source: SOURCE,
     sourceId: raw.id,
-    sourceType: SOURCE,
+    sourceKey: context.sourceKey || SOURCE,
+    sourceName: context.sourceName || 'Navidrome',
+    sourceType: context.sourceKey || SOURCE,
     name: raw.name || 'Unknown Artist',
-    img1v1Url: buildCoverArtUrl(raw.coverArt, 1024),
+    img1v1Url: coverArtUrl(raw.coverArt, 1024, context),
     briefDesc: '',
     musicSize: raw.songCount || 0,
     albumSize: raw.albumCount || (raw.album?.length ?? 0),
@@ -80,7 +111,7 @@ export function mapArtist(raw: NavidromeArtist = {}) {
   };
 }
 
-export function mapAlbum(raw: NavidromeAlbum = {}) {
+export function mapAlbum(raw: NavidromeAlbum = {}, context: MapContext = {}) {
   const artistObject = typeof raw.artist === 'object' ? raw.artist : undefined;
   const artistId = raw.artistId || artistObject?.id || '';
   const artistName =
@@ -91,20 +122,22 @@ export function mapAlbum(raw: NavidromeAlbum = {}) {
   const year = Number(raw.year) || new Date().getFullYear();
 
   return {
-    id: raw.id,
-    uid: sourceUid('album', raw.id),
+    id: scopedId(raw.id, context),
+    uid: sourceUid('album', raw.id, context),
     source: SOURCE,
     sourceId: raw.id,
-    sourceType: SOURCE,
+    sourceKey: context.sourceKey || SOURCE,
+    sourceName: context.sourceName || 'Navidrome',
+    sourceType: context.sourceKey || SOURCE,
     name: raw.name || raw.title || 'Unknown Album',
-    picUrl: buildCoverArtUrl(raw.coverArt, 1024),
+    picUrl: coverArtUrl(raw.coverArt, 1024, context),
     artist: {
-      id: artistId,
+      id: scopedId(artistId, context),
       name: artistName,
     },
     artists: [
       {
-        id: artistId,
+        id: scopedId(artistId, context),
         name: artistName,
       },
     ],
@@ -117,34 +150,36 @@ export function mapAlbum(raw: NavidromeAlbum = {}) {
   };
 }
 
-export function mapSong(raw: NavidromeSong = {}) {
+export function mapSong(raw: NavidromeSong = {}, context: MapContext = {}) {
   const artists =
     raw.artists?.length > 0
       ? raw.artists.map(artist => ({
-          id: artist.id,
+          id: scopedId(artist.id, context),
           name: artist.name,
         }))
       : [
           {
-            id: raw.artistId || '',
+            id: scopedId(raw.artistId || '', context),
             name: raw.artist || 'Unknown Artist',
           },
         ];
 
   const album = {
-    id: raw.albumId || '',
+    id: scopedId(raw.albumId || '', context),
     name: raw.album || 'Unknown Album',
-    picUrl: buildCoverArtUrl(raw.coverArt, 512),
+    picUrl: coverArtUrl(raw.coverArt, 512, context),
   };
 
   const durationInMs = Math.max(1, Number(raw.duration || 0) * 1000);
 
   return {
-    id: raw.id,
-    uid: sourceUid('song', raw.id),
+    id: scopedId(raw.id, context),
+    uid: sourceUid('song', raw.id, context),
     source: SOURCE,
     sourceId: raw.id,
-    sourceType: SOURCE,
+    sourceKey: context.sourceKey || SOURCE,
+    sourceName: context.sourceName || 'Navidrome',
+    sourceType: context.sourceKey || SOURCE,
     name: raw.title || raw.name || 'Unknown Track',
     dt: durationInMs,
     no: raw.track || 0,
@@ -157,7 +192,7 @@ export function mapSong(raw: NavidromeSong = {}) {
     tns: [],
     fee: 0,
     mark: 0,
-    streamUrl: buildStreamUrl(raw.id),
+    streamUrl: streamUrl(raw.id, context),
     created: raw.created,
     addedAt: raw.created,
     starred: raw.starred,
@@ -166,7 +201,7 @@ export function mapSong(raw: NavidromeSong = {}) {
     playable: true,
     reason: '',
     privilege: {
-      id: raw.id,
+      id: scopedId(raw.id, context),
       pl: 320000,
       fee: 0,
       st: 0,
@@ -175,20 +210,25 @@ export function mapSong(raw: NavidromeSong = {}) {
   };
 }
 
-export function mapPlaylist(raw: NavidromePlaylist = {}) {
-  const entries = (raw.entry || []).map(mapSong);
+export function mapPlaylist(
+  raw: NavidromePlaylist = {},
+  context: MapContext = {}
+) {
+  const entries = (raw.entry || []).map(song => mapSong(song, context));
   const owner = raw.owner || raw.username || 'Navidrome';
 
   return {
-    id: raw.id,
-    uid: sourceUid('playlist', raw.id),
+    id: scopedId(raw.id, context),
+    uid: sourceUid('playlist', raw.id, context),
     source: SOURCE,
     sourceId: raw.id,
-    sourceType: SOURCE,
+    sourceKey: context.sourceKey || SOURCE,
+    sourceName: context.sourceName || 'Navidrome',
+    sourceType: context.sourceKey || SOURCE,
     name: raw.name || 'Untitled Playlist',
     coverImgUrl:
       entries[0]?.al?.picUrl ||
-      buildCoverArtUrl(raw.coverArt, 1024) ||
+      coverArtUrl(raw.coverArt, 1024, context) ||
       '/img/logos/yesplaymusic.png',
     creator: {
       userId: owner,

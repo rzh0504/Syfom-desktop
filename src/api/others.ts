@@ -84,7 +84,10 @@ export function homeRecommendTracks(limit = 24) {
   const safeLimit = Math.max(1, Number(limit) || 24);
 
   return requestWithHomeDailyCache(`recommend-tracks:${safeLimit}`, () =>
-    getActiveProvider().getRandomSongs(safeLimit)
+    (
+      getActiveProvider().getAllRandomSongs ||
+      getActiveProvider().getRandomSongs
+    )(safeLimit)
   )
     .then(songs => ({ songs }))
     .catch(() => ({ songs: [] }));
@@ -104,7 +107,10 @@ export function homeAlbumsByType(
   const safeLimit = Math.max(1, Number(limit) || 24);
   const safeOffset = Math.max(0, Number(offset) || 0);
   const loader = () =>
-    getActiveProvider().getAlbumListByType({
+    (
+      getActiveProvider().getAllAlbumListByType ||
+      getActiveProvider().getAlbumListByType
+    )({
       type,
       size: safeLimit,
       offset: safeOffset,
@@ -130,7 +136,7 @@ export function homeAlbumsByType(
  */
 export function homeAllArtists() {
   return getActiveProvider()
-    .getAllArtists()
+    .getAllSourcesArtists()
     .then(artists => ({ artists }))
     .catch(() => ({ artists: [] }));
 }

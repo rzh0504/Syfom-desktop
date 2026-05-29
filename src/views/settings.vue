@@ -1320,7 +1320,7 @@ input[type='number'] {
   border-radius: 6px;
 }
 .toggle input:checked + label:before {
-  background: var(--color-primary);
+  background: var(--color-switch-active-bg);
   -webkit-transition: width 0.2s cubic-bezier(0, 0, 0, 0.1);
   transition: width 0.2s cubic-bezier(0, 0, 0, 0.1);
 }

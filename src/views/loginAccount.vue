@@ -83,6 +83,12 @@ import { setActiveProvider as persistActiveProvider } from '@/providers';
 type LoginResponse = {
   code?: number;
   profile?: unknown;
+  session?: {
+    serverUrl: string;
+    username: string;
+    token: string;
+    salt: string;
+  };
   msg?: string;
   message?: string;
 };
@@ -93,9 +99,7 @@ type SourceState = {
 };
 
 type DataState = {
-  sources?: {
-    navidrome?: SourceState;
-  };
+  sources?: Record<string, SourceState>;
 };
 
 export default defineComponent({
@@ -103,7 +107,7 @@ export default defineComponent({
   data() {
     return {
       processing: false,
-      server: localStorage.getItem('navidromeServer') || '',
+      server: '',
       username: '',
       password: '',
       inputFocus: '',
@@ -126,7 +130,8 @@ export default defineComponent({
       if (this.$route.query.edit !== '1') return;
 
       const data = this.$store.state.data as DataState;
-      const source = data.sources?.navidrome;
+      const sourceKey = String(this.$route.query.source || 'navidrome');
+      const source = data.sources?.[sourceKey] || data.sources?.navidrome;
       if (!source) return;
 
       this.server = source.serverUrl || this.server;
@@ -157,13 +162,17 @@ export default defineComponent({
       }
       if (data.code === 200) {
         localStorage.setItem('navidromeServer', this.server.trim());
+        const sourceKey = `navidrome-${Date.now()}`;
+        const editSourceKey = String(this.$route.query.source || 'navidrome');
         this.upsertSource({
-          key: 'navidrome',
-          name: 'Navidrome',
+          key: this.$route.query.edit === '1' ? editSourceKey : sourceKey,
+          name: this.username.trim(),
           provider: 'navidrome',
           enabled: true,
-          serverUrl: this.server.trim(),
-          username: this.username.trim(),
+          serverUrl: data.session?.serverUrl || this.server.trim(),
+          username: data.session?.username || this.username.trim(),
+          token: data.session?.token,
+          salt: data.session?.salt,
         });
         persistActiveProvider('navidrome');
         this.setActiveProvider('navidrome');
@@ -280,14 +289,14 @@ export default defineComponent({
   }
 
   .active {
-    background: var(--color-primary-bg);
+    background: var(--color-button-primary-bg);
     input,
     .svg-icon {
-      color: var(--color-primary);
+      color: var(--color-button-primary);
     }
 
     input::placeholder {
-      color: var(--color-primary);
+      color: var(--color-button-primary);
       opacity: 0.62;
     }
   }
@@ -299,8 +308,8 @@ export default defineComponent({
   justify-content: center;
   font-size: 20px;
   font-weight: 600;
-  background-color: var(--color-primary-bg);
-  color: var(--color-primary);
+  background-color: var(--color-button-primary-bg);
+  color: var(--color-button-primary);
   border-radius: 8px;
   margin-top: 24px;
   transition: 0.2s;
@@ -357,7 +366,7 @@ button.loading {
 .loading span {
   width: 6px;
   height: 6px;
-  background-color: var(--color-primary);
+  background-color: var(--color-button-primary);
   border-radius: 50%;
   margin: 0 2px;
   animation: loading 1.4s infinite both;
